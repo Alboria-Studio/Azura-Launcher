@@ -6,6 +6,12 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.11
+
+- The downloadable content's multiplayer characters (Tai, Valera, RAAM, Elite Theron, Classic
+  Carmine, Savage Creeper and Savage Marauder) are now yours when you choose them in Versus or
+  Horde. Until now the game gave you Marcus or a Drone instead. Needs RAAM's Shadow installed.
+
 ## 0.6.10
 
 - A diagnostic file made after playing now holds that game session's logs. Until now the
