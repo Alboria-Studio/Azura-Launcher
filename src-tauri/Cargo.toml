@@ -61,11 +61,12 @@ objc2-game-controller = "0.3"
 gilrs = "0.11"
 
 # The processor, memory and graphics cards on Windows (system.rs): the registry, the memory status
-# and SetupAPI's display adapters.
+# and SetupAPI's display adapters; and the time zone, for the diagnostic file (diagnostics.rs).
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_Registry",
   "Win32_System_SystemInformation",
+  "Win32_System_Time",
   "Win32_Devices_DeviceAndDriverInstallation",
 ] }

@@ -890,6 +890,42 @@ fn error_lines(log: &str) -> Vec<&str> {
         .collect()
 }
 
+/// The offset of this computer's local time from UTC now, in minutes (east of UTC positive).
+#[cfg(unix)]
+fn local_utc_offset_minutes() -> Option<i32> {
+    // SAFETY: `time` with a null pointer only returns the time; `localtime_r` writes only into `tm`.
+    let now = unsafe { libc::time(std::ptr::null_mut()) };
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    if unsafe { libc::localtime_r(&now, &mut tm) }.is_null() {
+        return None;
+    }
+    i32::try_from(tm.tm_gmtoff / 60).ok()
+}
+
+/// The offset of this computer's local time from UTC now, in minutes (east of UTC positive).
+/// Windows gives the bias the other way round (UTC = local time + bias), plus the daylight or
+/// standard bias in force.
+#[cfg(windows)]
+fn local_utc_offset_minutes() -> Option<i32> {
+    use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};
+    // SAFETY: GetTimeZoneInformation only writes into `info`.
+    let mut info: TIME_ZONE_INFORMATION = unsafe { std::mem::zeroed() };
+    let bias = match unsafe { GetTimeZoneInformation(&mut info) } {
+        0 => info.Bias,                     // TIME_ZONE_ID_UNKNOWN: no daylight saving time
+        1 => info.Bias + info.StandardBias, // TIME_ZONE_ID_STANDARD
+        2 => info.Bias + info.DaylightBias, // TIME_ZONE_ID_DAYLIGHT
+        _ => return None,                   // TIME_ZONE_ID_INVALID
+    };
+    Some(-bias)
+}
+
+/// An offset from UTC in minutes as "UTC+02:00", "UTC-03:30" or "UTC+00:00".
+fn format_utc_offset(minutes: i32) -> String {
+    let sign = if minutes < 0 { '-' } else { '+' };
+    let minutes = minutes.unsigned_abs();
+    format!("UTC{sign}{:02}:{:02}", minutes / 60, minutes % 60)
+}
+
 /// A time as "2026-11-08 18:04 UTC".
 fn format_time(time: SystemTime) -> String {
     let seconds = time.duration_since(UNIX_EPOCH).map(|elapsed| elapsed.as_secs()).unwrap_or(0) as i64;
@@ -965,6 +1001,15 @@ struct NewestRun {
 fn summary_text(sources: &Sources, newest: Option<&NewestRun>, cap: Option<u64>, missing: &[String], files: &[String]) -> String {
     let mut out = String::from("Azura diagnostic file\n=====================\n\n");
     out.push_str(&format!("Created: {}\n", format_time(SystemTime::now())));
+    // The game logs' times are this computer's local time, without its zone: with it, the logs of
+    // two players of the same game (a co-op host and client in different countries) line up.
+    match local_utc_offset_minutes() {
+        Some(minutes) => out.push_str(&format!(
+            "Time zone of this computer: {} (the times in the game logs are local times)\n",
+            format_utc_offset(minutes)
+        )),
+        None => out.push_str("Time zone of this computer: unknown (the times in the game logs are local times)\n"),
+    }
     out.push_str(&format!("Launcher: {} ({} {})\n", sources.launcher_version, sources.system.os, sources.system.arch));
     if let Some(revision) = sources.kit_dir.as_ref().and_then(|kit| crate::builder::read_kit(kit).ok()).map(|kit| kit.revision) {
         out.push_str(&format!("Kit revision: {revision}\n"));
@@ -1380,6 +1425,7 @@ mod tests {
         let launcher = &entries[3].1;
         assert_eq!(launcher, "ui_language = \"es\"\naccount = \"alboria\"\ngpu = \"chosen\"\n");
         assert!(entries[0].1.contains("Newest game run: azura_5.log"), "{}", entries[0].1);
+        assert!(entries[0].1.contains("Time zone of this computer: UTC"), "{}", entries[0].1);
         assert!(!root.join("azura-diagnostic.zip.part").exists());
     }
 
@@ -1542,6 +1588,14 @@ mod tests {
         assert!(log.ends_with("THE END\n"), "{}", &log[log.len() - 300..]);
         assert!(log.contains("bytes of this file left out"));
         assert!(entries[0].1.contains("small enough to send by email"), "{}", entries[0].1);
+    }
+
+    #[test]
+    fn utc_offsets_read_as_utc_plus_or_minus() {
+        assert_eq!(format_utc_offset(120), "UTC+02:00");
+        assert_eq!(format_utc_offset(-210), "UTC-03:30");
+        assert_eq!(format_utc_offset(0), "UTC+00:00");
+        assert!(local_utc_offset_minutes().is_some_and(|minutes| (-14 * 60..=14 * 60).contains(&minutes)));
     }
 
     #[test]
