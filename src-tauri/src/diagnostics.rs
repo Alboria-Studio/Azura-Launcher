@@ -23,12 +23,32 @@ use serde::Serialize;
 
 use crate::system::SystemInfo;
 
-/// How many of the newest game logs go in.
-const GAME_LOGS: usize = 3;
-/// The most of one game log that goes in: its start (the start-up, what the game found) and its
-/// end (where a problem usually is).
-const GAME_LOG_CAP: u64 = 4 * 1024 * 1024;
+/// How many of the newest game sessions go in (each with all the pieces of its log, see
+/// `game_sessions`).
+const GAME_SESSIONS: usize = 4;
+/// The size the zip aims to stay under, so it can go by email as an attachment (Outlook takes up
+/// to 20 MB and Gmail 25 MB). Logs compress about tenfold, so this holds about 190 MB of text.
+const ZIP_BUDGET: u64 = 19 * 1024 * 1024;
+/// The most of one session's log that goes in, after its repeated lines are shortened
+/// (`shorten_repeats`): the first cap the zip fits `ZIP_BUDGET` with. A log longer than it keeps
+/// its start (the start-up, what the game found) and its end (where a problem usually is).
+const SESSION_CAPS: [u64; 6] = [
+    256 * 1024 * 1024,
+    64 * 1024 * 1024,
+    32 * 1024 * 1024,
+    16 * 1024 * 1024,
+    8 * 1024 * 1024,
+    4 * 1024 * 1024,
+];
+/// The start of a log that goes in at least when it is cut, and at most an eighth of the cap.
 const LOG_HEAD: u64 = 256 * 1024;
+/// A line that repeats more often than this in a session (the same message, its smaller numbers
+/// aside) is shortened to its first `REPEAT_KEEP_FIRST` and last `REPEAT_KEEP_LAST` occurrences,
+/// with a note where the others were and a count at the end of the log. Errors are never
+/// shortened.
+const REPEAT_THRESHOLD: usize = 200;
+const REPEAT_KEEP_FIRST: usize = 50;
+const REPEAT_KEEP_LAST: usize = 20;
 /// The most of the build log and of each crash report.
 const BUILD_LOG_CAP: u64 = 2 * 1024 * 1024;
 const CRASH_REPORT_CAP: u64 = 2 * 1024 * 1024;
@@ -324,6 +344,8 @@ enum Source {
     LauncherSettings(PathBuf),
     /// A log file, with how much of it goes in.
     Log(PathBuf, u64),
+    /// A game session's log: its pieces, oldest first (see `game_sessions`).
+    Session(Vec<PathBuf>),
     GameOutput,
     /// The output of a system command that describes crashes (Linux, Windows).
     CrashCommand(Vec<String>),
@@ -342,41 +364,86 @@ struct Entry {
 /// exporting the achievements, installing a DLC) exits before it, after writing its own short log.
 const GAME_RUN_MARKER: &str = "[Azura] Active gamertag";
 
-/// The newest game logs (`runtime/logs/azura_N.log`) of runs that started the game, newest first.
-/// The launcher lists the graphics cards each time Play is pressed, and each listing leaves a log of
-/// the Vulkan start-up: kept by date alone, those pushed the session the player needed help with
-/// out of the file. A log that is empty or of a one-off task is left out; with no game run at all
-/// (an older runtime, or the game never got that far), the newest logs that hold something go in.
-fn game_logs(data_dir: &Path) -> Vec<PathBuf> {
+/// One run of the runtime and its log. The runtime starts a new log file once one reaches its size
+/// limit (5 MB unless `log_max_file_size_mb` says otherwise): `azura_88.log` is always the newest
+/// piece, and the older ones are renamed `azura_88.1.log`, `azura_88.2.log`... (the oldest has the
+/// highest number), so a long session is spread over several files.
+#[derive(Debug, Clone)]
+struct Session {
+    /// The name its log goes in under: that of its newest piece (`azura_88.log`).
+    name: String,
+    /// Its pieces, oldest first.
+    pieces: Vec<PathBuf>,
+    /// When its newest piece was last written.
+    modified: SystemTime,
+    /// The size of all its pieces.
+    bytes: u64,
+}
+
+/// The session and piece of a log file's name: `azura_88.log` is piece 0 of session "88",
+/// `azura_88.2.log` its piece 2. None for a file that is not a game log.
+fn log_piece(name: &str) -> Option<(String, u32)> {
+    let stem = name.strip_prefix("azura_")?.strip_suffix(".log")?;
+    match stem.rsplit_once('.') {
+        Some((session, piece)) if !piece.is_empty() && piece.bytes().all(|b| b.is_ascii_digit()) => {
+            Some((session.to_string(), piece.parse().ok()?))
+        }
+        _ => Some((stem.to_string(), 0)),
+    }
+}
+
+/// The newest game sessions (`runtime/logs/azura_N.log` and its older pieces) of runs that started
+/// the game, newest first. The launcher lists the graphics cards each time Play is pressed, and
+/// each listing leaves a log of the Vulkan start-up: kept by date alone, those pushed the session
+/// the player needed help with out of the file. A session that is empty or of a one-off task is
+/// left out; with no game run at all (an older runtime, or the game never got that far), the
+/// newest sessions that hold something go in.
+fn game_sessions(data_dir: &Path) -> Vec<Session> {
     let Ok(entries) = fs::read_dir(data_dir.join("runtime").join("logs")) else {
         return Vec::new();
     };
-    let mut logs: Vec<(SystemTime, PathBuf)> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| {
-            let name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
-            name.starts_with("azura_") && name.ends_with(".log")
-        })
-        .filter_map(|path| {
-            let metadata = fs::metadata(&path).ok()?;
-            (metadata.len() > 0).then_some(())?;
-            Some((metadata.modified().ok()?, path))
+    let mut by_id: std::collections::HashMap<String, Vec<(u32, PathBuf, fs::Metadata)>> = std::collections::HashMap::new();
+    for path in entries.flatten().map(|entry| entry.path()) {
+        let Some((id, piece)) = path.file_name().and_then(|name| name.to_str()).and_then(log_piece) else {
+            continue;
+        };
+        let Ok(metadata) = fs::metadata(&path) else {
+            continue;
+        };
+        if metadata.is_file() && metadata.len() > 0 {
+            by_id.entry(id).or_default().push((piece, path, metadata));
+        }
+    }
+    let mut sessions: Vec<Session> = by_id
+        .into_iter()
+        .filter_map(|(id, mut pieces)| {
+            pieces.sort_by_key(|(piece, _, _)| std::cmp::Reverse(*piece));
+            let modified = pieces.iter().filter_map(|(_, _, metadata)| metadata.modified().ok()).max()?;
+            Some(Session {
+                name: format!("azura_{id}.log"),
+                bytes: pieces.iter().map(|(_, _, metadata)| metadata.len()).sum(),
+                pieces: pieces.into_iter().map(|(_, path, _)| path).collect(),
+                modified,
+            })
         })
         .collect();
-    logs.sort_by_key(|log| std::cmp::Reverse(log.0));
-    let logs: Vec<PathBuf> = logs.into_iter().map(|(_, path)| path).collect();
-    let game_runs: Vec<PathBuf> = logs.iter().filter(|path| started_the_game(path)).take(GAME_LOGS).cloned().collect();
+    sessions.sort_by(|a, b| b.modified.cmp(&a.modified).then_with(|| b.name.cmp(&a.name)));
+    let game_runs: Vec<Session> = sessions.iter().filter(|session| started_the_game(session)).take(GAME_SESSIONS).cloned().collect();
     if game_runs.is_empty() {
-        logs.into_iter().take(GAME_LOGS).collect()
+        sessions.into_iter().take(GAME_SESSIONS).collect()
     } else {
         game_runs
     }
 }
 
-/// Whether the log's start shows the run started the game (`GAME_RUN_MARKER`).
-fn started_the_game(path: &Path) -> bool {
-    let Ok(file) = File::open(path) else {
+/// Whether the session's start shows it started the game (`GAME_RUN_MARKER`). A session whose log
+/// was long enough to be split started it too, even if its first piece is gone (the runtime keeps
+/// a limited number of pieces).
+fn started_the_game(session: &Session) -> bool {
+    if session.pieces.len() > 1 {
+        return true;
+    }
+    let Some(Ok(file)) = session.pieces.first().map(File::open) else {
         return false;
     };
     let mut head = Vec::new();
@@ -384,6 +451,212 @@ fn started_the_game(path: &Path) -> bool {
         return false;
     }
     String::from_utf8_lossy(&head).contains(GAME_RUN_MARKER)
+}
+
+/// A session's whole log: its pieces one after the other. A piece that cannot be read is named in
+/// the text where it would be.
+fn read_session(pieces: &[PathBuf]) -> io::Result<String> {
+    let mut out = String::new();
+    let mut read_any = false;
+    for piece in pieces {
+        match fs::read(piece) {
+            Ok(bytes) => {
+                read_any = true;
+                out.push_str(&String::from_utf8_lossy(&bytes));
+                if !out.ends_with('\n') {
+                    out.push('\n');
+                }
+            }
+            Err(error) => {
+                let name = piece.file_name().unwrap_or_default().to_string_lossy();
+                out.push_str(&format!("[... {name} could not be read: {error} ...]\n"));
+            }
+        }
+    }
+    if read_any {
+        Ok(out)
+    } else {
+        Err(io::Error::other("no piece of the log could be read"))
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Shortening repeated lines
+// ---------------------------------------------------------------------------------------------
+
+/// What `shorten_repeats` left out of a log.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+struct Shortened {
+    /// How many lines were left out.
+    lines: usize,
+    /// How many different lines were shortened.
+    kinds: usize,
+}
+
+/// A log line's time ("2026-11-14 18:53:29.989"), its text after the time with the thread left out
+/// ("[warning] [gpu] Texture fetch ..."), and whether it is an error. None for a line that does
+/// not start with a time (part of a message of several lines).
+fn split_line(line: &str) -> Option<(&str, String, bool)> {
+    let rest = line.strip_prefix('[')?;
+    let end = rest.find("] ")?;
+    let (time, rest) = (&rest[..end], &rest[end + 2..]);
+    if !time.starts_with(|c: char| c.is_ascii_digit()) {
+        return None;
+    }
+    // The thread ("[t21604] "), among the first brackets, says nothing about what the line says.
+    let mut text = String::with_capacity(rest.len());
+    let mut remaining = rest;
+    let mut brackets = 0;
+    while brackets < 4 && remaining.starts_with('[') {
+        let Some(close) = remaining.find("] ") else { break };
+        let bracket = &remaining[..close + 2];
+        let inner = &bracket[1..close];
+        let is_thread = inner.len() > 1 && inner.starts_with('t') && inner[1..].bytes().all(|b| b.is_ascii_digit());
+        if !is_thread {
+            text.push_str(bracket);
+        }
+        remaining = &remaining[close + 2..];
+        brackets += 1;
+    }
+    text.push_str(remaining);
+    let lower = text.get(..12).unwrap_or(&text).to_ascii_lowercase();
+    let error = lower.starts_with("[error]") || lower.starts_with("[critical]") || lower.starts_with("[fatal]");
+    Some((time, text, error))
+}
+
+/// `text` with its smaller numbers (up to 7 digits, with their decimals) as `#`, so lines that
+/// only differ in a count or a time are the same line. Numbers of 8 digits or more, and digits
+/// inside a word, stay: they are mostly hexadecimal words (addresses, register values), which say
+/// what the line is about ("Interpreting guest function 0x82DF5C28", "fetch constant 80800000").
+fn without_counts(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let word = |b: u8| b.is_ascii_alphanumeric() || b == b'_';
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i].is_ascii_digit() && (i == 0 || !word(bytes[i - 1])) {
+            let mut end = i;
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
+            let digits = end - i;
+            while end + 1 < bytes.len() && bytes[end] == b'.' && bytes[end + 1].is_ascii_digit() {
+                end += 1;
+                while end < bytes.len() && bytes[end].is_ascii_digit() {
+                    end += 1;
+                }
+            }
+            if digits <= 7 && (end == bytes.len() || !word(bytes[end])) {
+                out.push(b'#');
+                i = end;
+                continue;
+            }
+            out.extend_from_slice(&bytes[i..end]);
+            i = end;
+            continue;
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8(out).unwrap_or_else(|_| text.to_string())
+}
+
+/// `log` with the lines that repeat more than `REPEAT_THRESHOLD` times (the same text, the thread
+/// and smaller numbers aside: see `without_counts`) shortened to their first `REPEAT_KEEP_FIRST`
+/// and last `REPEAT_KEEP_LAST` occurrences. Where the others were, a line says how many; at the
+/// end, a list gives each shortened line with its count and the times of its first and last
+/// occurrence. Every different line stays, and errors are never shortened: a line printed every
+/// frame (a warning of the graphics, the interpreter's statistics) no longer fills the log and
+/// pushes out the rest.
+fn shorten_repeats(log: &str) -> (String, Shortened) {
+    let lines: Vec<&str> = log.lines().collect();
+    let mut ids: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    // Per kind of line: its key, how many times it appears, its first and last times.
+    let mut kinds: Vec<(String, usize, String, String)> = Vec::new();
+    let mut line_kinds: Vec<Option<usize>> = Vec::with_capacity(lines.len());
+    for line in &lines {
+        let kind = split_line(line).filter(|(_, _, error)| !error).map(|(time, text, _)| {
+            let key = without_counts(&text);
+            let id = *ids.entry(key.clone()).or_insert_with(|| {
+                kinds.push((key, 0, time.to_string(), String::new()));
+                kinds.len() - 1
+            });
+            kinds[id].1 += 1;
+            kinds[id].3 = time.to_string();
+            id
+        });
+        line_kinds.push(kind);
+    }
+    let shortened_kinds: Vec<usize> = (0..kinds.len()).filter(|&id| kinds[id].1 > REPEAT_THRESHOLD).collect();
+    if shortened_kinds.is_empty() {
+        return (log.to_string(), Shortened::default());
+    }
+    let mut seen = vec![0usize; kinds.len()];
+    let mut out = String::with_capacity(log.len() / 2);
+    let mut left_out = 0;
+    for (line, kind) in lines.iter().zip(&line_kinds) {
+        if let Some(id) = *kind {
+            let count = kinds[id].1;
+            let index = seen[id];
+            seen[id] += 1;
+            if count > REPEAT_THRESHOLD && index >= REPEAT_KEEP_FIRST && index < count - REPEAT_KEEP_LAST {
+                if index == REPEAT_KEEP_FIRST {
+                    let skipped = count - REPEAT_KEEP_FIRST - REPEAT_KEEP_LAST;
+                    let key = &kinds[id].0;
+                    let mut shown = key.len().min(160);
+                    while !key.is_char_boundary(shown) {
+                        shown -= 1;
+                    }
+                    out.push_str(&format!(
+                        "[... diagnostic: {skipped} more of this line left out from here on (its last {REPEAT_KEEP_LAST} follow later; \
+                         the end of this log counts it): {} ...]\n",
+                        &key[..shown]
+                    ));
+                }
+                left_out += 1;
+                continue;
+            }
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out.push_str(&format!(
+        "\n[... diagnostic: {} lines that repeat more than {REPEAT_THRESHOLD} times were shortened; each, with its count, \
+         first and last time (numbers of up to 7 digits as #): ...]\n",
+        shortened_kinds.len()
+    ));
+    let mut by_count = shortened_kinds.clone();
+    by_count.sort_by_key(|&id| std::cmp::Reverse(kinds[id].1));
+    for id in by_count {
+        let (key, count, first, last) = &kinds[id];
+        out.push_str(&format!("{count:>9}x  {first} .. {last}  {key}\n"));
+    }
+    (out, Shortened { lines: left_out, kinds: shortened_kinds.len() })
+}
+
+/// `text` whole when it is at most `cap` bytes; otherwise its start (`LOG_HEAD`, or an eighth of
+/// `cap` if that is more) and its end, cut at line ends, with a line saying how much was left out.
+fn cap_text(text: &str, cap: u64) -> String {
+    let size = text.len() as u64;
+    if size <= cap {
+        return text.to_string();
+    }
+    let head_len = (cap / 8).max(LOG_HEAD).min(cap / 2) as usize;
+    let tail_len = (cap as usize).saturating_sub(head_len);
+    let mut head_end = head_len.min(text.len());
+    while !text.is_char_boundary(head_end) {
+        head_end -= 1;
+    }
+    let mut tail_start = text.len() - tail_len.min(text.len());
+    while !text.is_char_boundary(tail_start) {
+        tail_start += 1;
+    }
+    let head = &text[..head_end];
+    let tail = &text[tail_start..];
+    let head = head.rfind('\n').map_or(head, |end| &head[..=end]);
+    let tail = tail.find('\n').map_or(tail, |start| &tail[start + 1..]);
+    let left_out = size - head.len() as u64 - tail.len() as u64;
+    format!("{head}\n[... {left_out} bytes of this file left out ...]\n\n{tail}")
 }
 
 /// The newest game build's folder (`build/<game build id>`), by its build log.
@@ -452,14 +725,12 @@ fn entries(sources: &Sources) -> Vec<Entry> {
             included: true,
         });
     }
-    for log in game_logs(&sources.data_dir) {
-        let name = log.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        let size = fs::metadata(&log).map(|metadata| metadata.len()).unwrap_or(0);
+    for session in game_sessions(&sources.data_dir) {
         entries.push(Entry {
-            name: format!("logs/{name}"),
+            name: format!("logs/{}", session.name),
             kind: "gameLog",
-            bytes: size.min(GAME_LOG_CAP),
-            source: Source::Log(log, GAME_LOG_CAP),
+            bytes: session.bytes.min(SESSION_CAPS[0]),
+            source: Source::Session(session.pieces),
             included: true,
         });
     }
@@ -681,7 +952,17 @@ fn os_version() -> Option<String> {
 
 /// The summary at the top of the zip: versions, the newest run and what failed in it, and what the
 /// file leaves out.
-fn summary_text(sources: &Sources, missing: &[String], files: &[String]) -> String {
+/// What the summary says of the newest game run.
+struct NewestRun {
+    name: String,
+    modified: SystemTime,
+    pieces: usize,
+    shortened: Shortened,
+    /// Its error lines (`error_lines`), cleaned.
+    errors: Vec<String>,
+}
+
+fn summary_text(sources: &Sources, newest: Option<&NewestRun>, cap: Option<u64>, missing: &[String], files: &[String]) -> String {
     let mut out = String::from("Azura diagnostic file\n=====================\n\n");
     out.push_str(&format!("Created: {}\n", format_time(SystemTime::now())));
     out.push_str(&format!("Launcher: {} ({} {})\n", sources.launcher_version, sources.system.os, sources.system.arch));
@@ -695,23 +976,33 @@ fn summary_text(sources: &Sources, missing: &[String], files: &[String]) -> Stri
             out.push_str(&format!("Built by kit {} with {}\n", state.kit_revision, state.compiler));
         }
     }
-    if let Some(log) = game_logs(&sources.data_dir).into_iter().next() {
-        let modified = fs::metadata(&log).and_then(|metadata| metadata.modified()).map(format_time).unwrap_or_default();
-        let name = log.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        out.push_str(&format!("\nNewest game run: {name}, last written {modified}\n"));
-        if let Ok(text) = read_capped(&log, GAME_LOG_CAP) {
-            let errors = error_lines(&text);
-            if errors.is_empty() {
-                out.push_str("No error lines in it.\n");
-            } else {
-                out.push_str("Its last error lines:\n");
-                for line in &errors[errors.len().saturating_sub(SUMMARY_ERROR_LINES)..] {
-                    out.push_str(&format!("  {line}\n"));
-                }
+    if let Some(run) = newest {
+        out.push_str(&format!("\nNewest game run: {}, last written {}\n", run.name, format_time(run.modified)));
+        if run.pieces > 1 {
+            out.push_str(&format!("Its log was written in {} pieces, joined here in order.\n", run.pieces));
+        }
+        if run.shortened.lines > 0 {
+            out.push_str(&format!(
+                "{} repeated lines of it ({} different ones) were shortened; the end of its log lists them.\n",
+                run.shortened.lines, run.shortened.kinds
+            ));
+        }
+        if run.errors.is_empty() {
+            out.push_str("No error lines in it.\n");
+        } else {
+            out.push_str("Its last error lines:\n");
+            for line in &run.errors[run.errors.len().saturating_sub(SUMMARY_ERROR_LINES)..] {
+                out.push_str(&format!("  {line}\n"));
             }
         }
     } else {
         out.push_str("\nNo game run found.\n");
+    }
+    if let Some(cap) = cap {
+        out.push_str(&format!(
+            "\nTo keep the file small enough to send by email, each game log keeps at most {} MB (its start and its end).\n",
+            cap / (1024 * 1024)
+        ));
     }
     out.push_str("\nFiles in it:\n");
     for file in files {
@@ -750,10 +1041,14 @@ pub fn create(
     }
     let redactor = Redactor::new(&sources.private);
 
-    // Read and clean everything first: a missing file is named in the summary, not an error.
-    let mut texts: Vec<(String, String)> = Vec::new();
+    // Read and clean everything first: a missing file is named in the summary, not an error. A
+    // session's log is read whole, with its repeated lines shortened; how much of it goes in is
+    // decided below, once the size of the zip is known.
+    let mut texts: Vec<(String, String, bool)> = Vec::new(); // name, text, whether it is a session's log
     let mut missing: Vec<String> = Vec::new();
     let mut has_summary = false;
+    let mut newest: Option<NewestRun> = None;
+    let newest_session = game_sessions(&sources.data_dir).into_iter().next();
     for entry in &chosen {
         let text = match &entry.source {
             Source::Summary => {
@@ -766,6 +1061,19 @@ pub fn create(
                 vec![format!("gpu = {}", if table.contains_key("gpu") { "\"chosen\"" } else { "\"automatic\"" })]
             }),
             Source::Log(path, cap) => read_capped(path, *cap),
+            Source::Session(pieces) => {
+                let Ok(log) = read_session(pieces) else {
+                    missing.push(entry.name.clone());
+                    continue;
+                };
+                let (log, shortened) = shorten_repeats(&log);
+                let log = redactor.clean(&log);
+                if newest.is_none() && newest_session.as_ref().is_some_and(|session| &session.pieces == pieces) {
+                    newest = newest_session.as_ref().map(|session| newest_run(session, &log, shortened));
+                }
+                texts.push((entry.name.clone(), log, true));
+                continue;
+            }
             Source::GameOutput => {
                 if game_output.is_empty() {
                     missing.push(format!("{} (no game output this session)", entry.name));
@@ -776,27 +1084,67 @@ pub fn create(
             Source::CrashCommand(command) => command_output(command).ok_or_else(|| io::Error::other("no crash found")),
         };
         match text {
-            Ok(text) => texts.push((entry.name.clone(), redactor.clean(&text))),
+            Ok(text) => texts.push((entry.name.clone(), redactor.clean(&text), false)),
             Err(_) => missing.push(entry.name.clone()),
         }
     }
-    if has_summary {
-        let files: Vec<String> = std::iter::once("summary.txt".to_string()).chain(texts.iter().map(|(name, _)| name.clone())).collect();
-        texts.insert(0, ("summary.txt".into(), redactor.clean(&summary_text(sources, &missing, &files))));
+    // The summary speaks of the newest game run even when its log is left out of the zip.
+    if has_summary && newest.is_none() {
+        if let Some(session) = &newest_session {
+            if let Ok(log) = read_session(&session.pieces) {
+                let (log, shortened) = shorten_repeats(&log);
+                newest = Some(newest_run(session, &redactor.clean(&log), shortened));
+            }
+        }
     }
 
+    // The sessions' logs whole when the zip fits `ZIP_BUDGET` with them, otherwise cut to the
+    // largest cap of `SESSION_CAPS` it fits with (or the smallest).
     let partial = destination.with_extension("zip.part");
-    let written = write_zip(&partial, &texts).and_then(|()| fs::rename(&partial, destination).map_err(Into::into));
-    if let Err(error) = written {
+    let mut files: Vec<String> = Vec::new();
+    for (attempt, cap) in SESSION_CAPS.iter().enumerate() {
+        let cut = texts.iter().any(|(_, text, session)| *session && text.len() as u64 > *cap);
+        // A cap that cuts nothing writes the same zip as the attempt before it.
+        if attempt > 0 && !cut {
+            continue;
+        }
+        let mut zip_texts: Vec<(String, String)> = texts
+            .iter()
+            .map(|(name, text, session)| (name.clone(), if *session { cap_text(text, *cap) } else { text.clone() }))
+            .collect();
+        if has_summary {
+            let names: Vec<String> =
+                std::iter::once("summary.txt".to_string()).chain(zip_texts.iter().map(|(name, _)| name.clone())).collect();
+            let summary = summary_text(sources, newest.as_ref(), cut.then_some(*cap), &missing, &names);
+            zip_texts.insert(0, ("summary.txt".into(), redactor.clean(&summary)));
+        }
+        if let Err(error) = write_zip(&partial, &zip_texts) {
+            let _ = fs::remove_file(&partial);
+            return Err(error);
+        }
+        files = zip_texts.into_iter().map(|(name, _)| name).collect();
+        let size = fs::metadata(&partial).map(|metadata| metadata.len()).unwrap_or(0);
+        if size <= ZIP_BUDGET {
+            break;
+        }
+    }
+    if let Err(error) = fs::rename(&partial, destination) {
         let _ = fs::remove_file(&partial);
-        return Err(error);
+        return Err(error.into());
     }
     let bytes = fs::metadata(destination).map(|metadata| metadata.len()).unwrap_or(0);
-    Ok(Created {
-        path: destination.to_string_lossy().into_owned(),
-        bytes,
-        files: texts.into_iter().map(|(name, _)| name).collect(),
-    })
+    Ok(Created { path: destination.to_string_lossy().into_owned(), bytes, files })
+}
+
+/// What the summary says of `session`, the newest game run, from its cleaned `log`.
+fn newest_run(session: &Session, log: &str, shortened: Shortened) -> NewestRun {
+    NewestRun {
+        name: session.name.clone(),
+        modified: session.modified,
+        pieces: session.pieces.len(),
+        shortened,
+        errors: error_lines(log).into_iter().map(String::from).collect(),
+    }
 }
 
 fn write_zip(path: &Path, texts: &[(String, String)]) -> Result<(), DiagnosticError> {
@@ -1017,7 +1365,7 @@ mod tests {
             names,
             [
                 "summary.txt", "system.txt", "settings/azura.toml", "settings/launcher.toml", "logs/azura_5.log",
-                "logs/azura_4.log", "logs/azura_3.log", "build/build.log", "launcher/game-output.txt"
+                "logs/azura_4.log", "logs/azura_3.log", "logs/azura_2.log", "build/build.log", "launcher/game-output.txt"
             ],
         );
         assert_eq!(created.files, names);
@@ -1040,13 +1388,12 @@ mod tests {
         let root = crate::test_support::TempFolder::new("diagnostics-no-game-run");
         let logs = root.join("runtime").join("logs");
         fs::create_dir_all(&logs).unwrap();
-        for n in 1..=4 {
+        for n in 1..=5 {
             fs::write(logs.join(format!("azura_{n}.log")), format!("[error] run {n} stopped before the game\n")).unwrap();
             std::thread::sleep(Duration::from_millis(15));
         }
-        let names: Vec<String> =
-            game_logs(&root).iter().map(|path| path.file_name().unwrap().to_string_lossy().into_owned()).collect();
-        assert_eq!(names, ["azura_4.log", "azura_3.log", "azura_2.log"]);
+        let names: Vec<String> = game_sessions(&root).into_iter().map(|session| session.name).collect();
+        assert_eq!(names, ["azura_5.log", "azura_4.log", "azura_3.log", "azura_2.log"]);
     }
 
     #[test]
@@ -1093,6 +1440,108 @@ mod tests {
         assert!(read.starts_with("START\n") && read.ends_with("THE END\n"), "{}", &read[..100]);
         assert!(read.contains("bytes of this file left out"));
         assert!(read.len() < 310_000);
+    }
+
+    #[test]
+    fn a_session_split_in_pieces_goes_in_whole_and_in_order() {
+        let root = crate::test_support::TempFolder::new("diagnostics-pieces");
+        let logs = root.join("runtime").join("logs");
+        fs::create_dir_all(&logs).unwrap();
+        // The runtime renames full pieces: the oldest has the highest number, the newest none.
+        fs::write(logs.join("azura_88.2.log"), "[2026-11-14 18:00:00.000] [info] [core] [t1] [Azura] Active gamertag x\nFIRST\n").unwrap();
+        fs::write(logs.join("azura_88.1.log"), "SECOND\n").unwrap();
+        std::thread::sleep(Duration::from_millis(15));
+        fs::write(logs.join("azura_88.log"), "THIRD\n").unwrap();
+        // An older session of one piece, and a newer listing of the graphics cards (no game).
+        fs::write(logs.join("azura_87.log"), "[info] [Azura] Active gamertag x\n").unwrap();
+        std::thread::sleep(Duration::from_millis(15));
+        fs::write(logs.join("azura_89.log"), "[info] Vulkan: using Apple M4\n").unwrap();
+        let sessions = game_sessions(&root);
+        let names: Vec<&str> = sessions.iter().map(|session| session.name.as_str()).collect();
+        assert_eq!(names, ["azura_88.log", "azura_87.log"]);
+        let text = read_session(&sessions[0].pieces).unwrap();
+        let order: Vec<usize> = ["FIRST", "SECOND", "THIRD"].iter().map(|word| text.find(word).unwrap()).collect();
+        assert!(order[0] < order[1] && order[1] < order[2], "{text}");
+    }
+
+    #[test]
+    fn log_pieces_are_named_by_session_and_number() {
+        assert_eq!(log_piece("azura_088.log"), Some(("088".into(), 0)));
+        assert_eq!(log_piece("azura_088.12.log"), Some(("088".into(), 12)));
+        assert_eq!(log_piece("azura_launcher.log"), Some(("launcher".into(), 0)));
+        assert_eq!(log_piece("other_1.log"), None);
+        assert_eq!(log_piece("azura_1.txt"), None);
+    }
+
+    #[test]
+    fn repeated_lines_are_shortened_but_every_kind_and_error_stays() {
+        let mut log = String::from("[2026-11-14 17:45:00.000] [info] [core] [t1] start\n");
+        for i in 0..1000 {
+            log.push_str(&format!(
+                "[2026-11-14 17:45:{:02}.{:03}] [warning] [gpu] [t{}] Texture fetch constant (80800000 1656B002) has \"invalid\" type!\n",
+                i / 1000, i % 1000, 29156 + i % 3
+            ));
+            if i == 500 {
+                log.push_str("[2026-11-14 17:45:00.500] [info] [sys] [t2] Alboria: no game data from member 6 for 2034 ms\n");
+                log.push_str("[2026-11-14 17:45:00.500] [warning] [gpu] [t2] Texture fetch constant (11111111 22222222) has \"invalid\" type!\n");
+            }
+            log.push_str(&format!("[2026-11-14 17:45:00.{:03}] [error] [krnl] [t3] Unimplemented XGI message {i}\n", i % 1000));
+        }
+        log.push_str("a continuation line\n[2026-11-14 17:45:06.000] [info] [core] [t1] Title terminated\n");
+        let (short, shortened) = shorten_repeats(&log);
+        let fetch = short.lines().filter(|line| line.contains("(80800000 1656B002)") && line.starts_with('[') && !line.starts_with("[...")).count();
+        assert_eq!(fetch, REPEAT_KEEP_FIRST + REPEAT_KEEP_LAST);
+        assert_eq!(shortened, Shortened { lines: 1000 - REPEAT_KEEP_FIRST - REPEAT_KEEP_LAST, kinds: 1 });
+        // Errors, other lines and the other constant all stay.
+        assert_eq!(short.lines().filter(|line| line.contains("[error]")).count(), 1000);
+        for kept in ["start", "no game data from member 6 for 2034 ms", "(11111111 22222222)", "a continuation line", "Title terminated"] {
+            assert!(short.contains(kept), "{kept}");
+        }
+        assert!(short.contains("1000x  2026-11-14 17:45:00.000 .. 2026-11-14 17:45:00.999  [warning] [gpu] Texture fetch constant (80800000 1656B002)"), "{}", &short[short.len() - 600..]);
+        // A log with nothing repeated enough is left as it is.
+        assert_eq!(shorten_repeats("[2026-01-01 00:00:00.000] [info] a\nb\n").0, "[2026-01-01 00:00:00.000] [info] a\nb\n");
+    }
+
+    #[test]
+    fn only_small_numbers_are_counts() {
+        assert_eq!(
+            without_counts("Interpreter: 0x82D37198: 2 calls, 50 instructions, 0.075 ms, fetch 80800000 00001400 x86_64"),
+            "Interpreter: 0x82D37198: # calls, # instructions, # ms, fetch 80800000 00001400 x86_64"
+        );
+    }
+
+    #[test]
+    fn a_large_log_is_cut_to_fit_the_email_budget() {
+        let root = crate::test_support::TempFolder::new("diagnostics-budget");
+        let logs = root.join("runtime").join("logs");
+        fs::create_dir_all(&logs).unwrap();
+        // About 48 MB of hexadecimal, which compresses to about half: over the budget whole, under
+        // the second cap, so it is cut only once smaller caps are tried.
+        let mut text = String::from("[2026-11-14 18:00:00.000] [info] [core] [t1] [Azura] Active gamertag x\nSTART\n");
+        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+        while text.len() < 48 * 1024 * 1024 {
+            let mut line = String::from("[2026-11-14 18:00:00.000] [info] [core] [t1] ");
+            for _ in 0..12 {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                line.push_str(&format!("{state:016x}g "));
+            }
+            text.push_str(&line);
+            text.push('\n');
+        }
+        text.push_str("THE END\n");
+        fs::write(logs.join("azura_1.log"), &text).unwrap();
+        let sources = Sources { data_dir: root.to_path_buf(), ..Sources::default() };
+        let destination = root.join("out.zip");
+        let created = create(&sources, &destination, &[], &[]).unwrap();
+        assert!(created.bytes <= ZIP_BUDGET, "{} bytes", created.bytes);
+        let entries = unzip(&destination);
+        let log = &entries.iter().find(|(name, _)| name == "logs/azura_1.log").unwrap().1;
+        assert!(log.contains("START"), "{}", &log[..300]);
+        assert!(log.ends_with("THE END\n"), "{}", &log[log.len() - 300..]);
+        assert!(log.contains("bytes of this file left out"));
+        assert!(entries[0].1.contains("small enough to send by email"), "{}", entries[0].1);
     }
 
     #[test]

@@ -11,6 +11,10 @@ indented lines.
 - A diagnostic file made after playing now holds that game session's logs. Until now the
   launcher's own quick checks of the graphics cards, made each time you press Play, could take
   their place, so a report about a problem in the game came without it.
+- The diagnostic file holds much more of each game session: its whole log, also when the game
+  split it into several files during a long session, from the last four sessions. Lines the game
+  repeats hundreds of times are shortened, with a count of each, so they no longer push out the
+  rest; errors are always kept whole. The file stays small enough to send by email.
 
 ## 0.6.9
 
