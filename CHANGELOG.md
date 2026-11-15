@@ -12,6 +12,9 @@ indented lines.
   split it into several files during a long session, from the last four sessions. Lines the game
   repeats hundreds of times are shortened, with a count of each, so they no longer push out the
   rest; errors are always kept whole. The file stays small enough to send by email.
+- The downloadable content's multiplayer characters (Tai, Valera, RAAM, Elite Theron, Classic
+  Carmine, Savage Creeper and Savage Marauder) are now yours when you choose them in Versus or
+  Horde. Until now the game gave you Marcus or a Drone instead. Needs RAAM's Shadow installed.
 
 ## 0.6.10
 
