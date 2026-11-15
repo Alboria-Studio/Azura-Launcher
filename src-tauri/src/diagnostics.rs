@@ -1493,15 +1493,24 @@ mod tests {
         let root = crate::test_support::TempFolder::new("diagnostics-pieces");
         let logs = root.join("runtime").join("logs");
         fs::create_dir_all(&logs).unwrap();
+        // Each file gets its modification time set, a minute apart, so the order does not depend on
+        // how finely the file system stores times (Linux in steps of milliseconds, macOS in
+        // nanoseconds) nor on how fast the files are written.
+        let now = SystemTime::now();
+        let write_at = |name: &str, text: &str, minutes_ago: u64| {
+            let path = logs.join(name);
+            fs::write(&path, text).unwrap();
+            let file = File::options().write(true).open(&path).unwrap();
+            file.set_modified(now - Duration::from_secs(60 * minutes_ago)).unwrap();
+        };
+        // An older session of one piece.
+        write_at("azura_87.log", "[info] [Azura] Active gamertag x\n", 4);
         // The runtime renames full pieces: the oldest has the highest number, the newest none.
-        fs::write(logs.join("azura_88.2.log"), "[2026-11-14 18:00:00.000] [info] [core] [t1] [Azura] Active gamertag x\nFIRST\n").unwrap();
-        fs::write(logs.join("azura_88.1.log"), "SECOND\n").unwrap();
-        std::thread::sleep(Duration::from_millis(15));
-        fs::write(logs.join("azura_88.log"), "THIRD\n").unwrap();
-        // An older session of one piece, and a newer listing of the graphics cards (no game).
-        fs::write(logs.join("azura_87.log"), "[info] [Azura] Active gamertag x\n").unwrap();
-        std::thread::sleep(Duration::from_millis(15));
-        fs::write(logs.join("azura_89.log"), "[info] Vulkan: using Apple M4\n").unwrap();
+        write_at("azura_88.2.log", "[2026-11-14 18:00:00.000] [info] [core] [t1] [Azura] Active gamertag x\nFIRST\n", 3);
+        write_at("azura_88.1.log", "SECOND\n", 2);
+        write_at("azura_88.log", "THIRD\n", 1);
+        // A newer listing of the graphics cards, which did not start the game.
+        write_at("azura_89.log", "[info] Vulkan: using Apple M4\n", 0);
         let sessions = game_sessions(&root);
         let names: Vec<&str> = sessions.iter().map(|session| session.name.as_str()).collect();
         assert_eq!(names, ["azura_88.log", "azura_87.log"]);
