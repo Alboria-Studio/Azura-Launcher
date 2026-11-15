@@ -12,6 +12,8 @@ indented lines.
   split it into several files during a long session, from the last four sessions. Lines the game
   repeats hundreds of times are shortened, with a count of each, so they no longer push out the
   rest; errors are always kept whole. The file stays small enough to send by email.
+- The diagnostic file says the computer's time zone, so the logs of two players of the same
+  game (a co-op host and client in different countries) can be lined up.
 
 ## 0.6.10
 
