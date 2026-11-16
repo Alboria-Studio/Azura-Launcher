@@ -104,6 +104,25 @@ release_exists() {
 }
 
 # Runs the AWS CLI against the R2 bucket's endpoint (R2 has no regions; "auto" stands for one).
+# A call that fails runs again, up to R2_ATTEMPTS times in all, waiting R2_RETRY_WAIT seconds more
+# each time: R2 sometimes does not answer a large upload in time
+# (AWS_ERROR_HTTP_RESPONSE_FIRST_BYTE_TIMEOUT), and every call made here (an upload over the same
+# name, or a read) can be repeated safely. The CLI also retries the requests it can retry itself
+# (AWS_RETRY_MODE and AWS_MAX_ATTEMPTS).
+R2_ATTEMPTS="${R2_ATTEMPTS:-4}"
+R2_RETRY_WAIT="${R2_RETRY_WAIT:-15}"
 r2() {
-  AWS_DEFAULT_REGION=auto aws --endpoint-url "${R2_ENDPOINT}" "$@"
+  local attempt
+  for ((attempt = 1; attempt <= R2_ATTEMPTS; attempt++)); do
+    if AWS_DEFAULT_REGION=auto AWS_RETRY_MODE=standard AWS_MAX_ATTEMPTS=5 \
+      aws --endpoint-url "${R2_ENDPOINT}" "$@"; then
+      return 0
+    fi
+    if ((attempt < R2_ATTEMPTS)); then
+      echo "R2: attempt ${attempt} of ${R2_ATTEMPTS} failed; trying again in $((attempt * R2_RETRY_WAIT)) s" >&2
+      sleep "$((attempt * R2_RETRY_WAIT))"
+    fi
+  done
+  echo "R2: all ${R2_ATTEMPTS} attempts failed" >&2
+  return 1
 }
