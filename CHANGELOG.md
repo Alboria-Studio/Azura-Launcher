@@ -11,6 +11,12 @@ indented lines.
 - The game tells Alboria its own version when it signs in, the same as the launcher's. It used to
   say 0.6.8 whatever its version, so when Alboria asked for a newer version to play online, the
   game asked you to update even with the latest launcher.
+- A player who leaves your party online no longer stays "connecting" in it: they disappear at
+  once when they leave, and about 12 seconds after their game or connection stops, when Alboria
+  stops hearing from them.
+- Playing online needs the latest version of Azura. When a new one comes out, the launcher
+  updates itself and then the game; until then, an older version can still play alone and in
+  local co-op, but not online. Everyone online then has the same version.
 
 ## 0.6.12
 
