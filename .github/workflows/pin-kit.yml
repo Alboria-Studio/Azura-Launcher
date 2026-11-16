@@ -1,0 +1,139 @@
+# Pins the player kit of a launcher release (alboria-notes:release-kits.md).
+#
+# Run by hand on a release branch (release-<version>, whose tauri.conf.json says <version>), it asks
+# the private Azura runtime repository to build and publish the kits of its main for that version
+# (its Publish kit workflow, with kit_version=<version>) and ends: the kits take an hour or more to
+# build, and nothing here waits for them. When they are published, Publish kit sends this
+# repository a `kit-published` event, which runs this workflow again: it downloads the version's
+# kit.toml lines (https://updates.alboria.org/kits/versions/<version>.toml), checks each kit
+# against its SHA-256, writes them into kit.toml on release-<version> and pushes. The push updates
+# the release's pull request, whose Release workflow then builds the launchers with that kit to be
+# tried before the release is merged.
+#
+# A version's kit is published once and never replaced. To pin a newer runtime after that, bump the
+# launcher version (a new release) or publish nothing more for this one.
+#
+# Secret: AZURA_RELEASE_TOKEN, a fine-grained token that can run workflows of Carolux97/Azura
+# (Actions: read and write) and push to this repository (Contents: read and write). The push uses
+# it rather than the run's own token so the release's pull request runs its checks again.
+
+name: Pin kit
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [kit-published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pin-kit
+  cancel-in-progress: false
+
+env:
+  DOWNLOADS_URL: https://updates.alboria.org
+
+jobs:
+  # By hand: asks Azura for the release branch's kit.
+  request:
+    name: Request the kit
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ask.outputs.version }}
+      published: ${{ steps.ask.outputs.published }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Ask Azura's Publish kit for this release's kit
+        id: ask
+        env:
+          GH_TOKEN: ${{ secrets.AZURA_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(python3 -c 'import json; print(json.load(open("src-tauri/tauri.conf.json"))["version"])')"
+          if [[ "${GITHUB_REF_NAME}" != "release-${version}" ]]; then
+            echo "Run this on the release branch release-${version}, not ${GITHUB_REF_NAME}." >&2
+            exit 1
+          fi
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "The secret AZURA_RELEASE_TOKEN is not set." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          # Already published (its pin failed, or kit.toml was changed since): pinned again below.
+          if [[ "$(curl -s -o /dev/null -w '%{http_code}' -I "${DOWNLOADS_URL}/kits/versions/${version}.toml")" == 200 ]]; then
+            echo "published=true" >> "${GITHUB_OUTPUT}"
+            echo "Kit ${version} is already published: pinning it." | tee -a "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          echo "published=false" >> "${GITHUB_OUTPUT}"
+          gh workflow run publish-kit.yml -R Carolux97/Azura --ref main -f "kit_version=${version}"
+          echo "Asked Carolux97/Azura for kit ${version}; it is pinned here when Publish kit is done." | tee -a "${GITHUB_STEP_SUMMARY}"
+
+  # From Publish kit's event, or by hand for a version already published: pins the published kit
+  # on the release branch.
+  pin:
+    name: Pin the kit
+    needs: request
+    if: >-
+      always() && (github.event_name == 'repository_dispatch' ||
+      (needs.request.result == 'success' && needs.request.outputs.published == 'true'))
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.event.client_payload.version || needs.request.outputs.version }}
+    steps:
+      - name: Check the version
+        run: |
+          set -euo pipefail
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "The event names no launcher version: '${VERSION}'." >&2
+            exit 1
+          fi
+
+      - name: Check out the release branch
+        uses: actions/checkout@v7
+        with:
+          ref: release-${{ github.event.client_payload.version || needs.request.outputs.version }}
+          token: ${{ secrets.AZURA_RELEASE_TOKEN }}
+
+      - name: Write the version's kit into kit.toml
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 -o kit-version.toml "${DOWNLOADS_URL}/kits/versions/${VERSION}.toml"
+          value() { sed -n "s/^$1 = \"\\(.*\\)\"\$/\\1/p" kit-version.toml | head -n 1; }
+          if [[ "$(value version)" != "${VERSION}" ]]; then
+            echo "kits/versions/${VERSION}.toml is for version '$(value version)'." >&2
+            exit 1
+          fi
+          revision="$(value revision)"
+          for platform in mac-arm64 linux-amd64 win-amd64; do
+            archive="azura-kit-${platform}.tar.gz"
+            curl -fsSL --retry 3 -o "${archive}" "${DOWNLOADS_URL}/kits/${revision}/${archive}"
+            if [[ "$(sha256sum "${archive}" | cut -d ' ' -f 1)" != "$(value "${platform}")" ]]; then
+              echo "The ${platform} kit does not match its SHA-256 in kits/versions/${VERSION}.toml." >&2
+              exit 1
+            fi
+            rm -f "${archive}"
+          done
+          # kit.toml keeps its comment header; the values are the published ones.
+          { grep '^#' kit.toml; cat kit-version.toml; } > kit.toml.new
+          mv kit.toml.new kit.toml
+          rm -f kit-version.toml
+          git diff -- kit.toml
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- kit.toml; then
+            echo "kit.toml already pins kit ${VERSION}."
+            exit 0
+          fi
+          revision="$(sed -n 's/^revision = "\(.*\)"$/\1/p' kit.toml)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Pin the player kit ${VERSION} (${revision})" -- kit.toml
+          git push -q origin "HEAD:release-${VERSION}"
+          echo "Pinned kit ${VERSION} (${revision}) on release-${VERSION}." | tee -a "${GITHUB_STEP_SUMMARY}"
