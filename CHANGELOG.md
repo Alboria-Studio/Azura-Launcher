@@ -6,6 +6,12 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.7.0
+
+- The game tells Alboria its own version when it signs in, the same as the launcher's. It used to
+  say 0.6.8 whatever its version, so when Alboria asked for a newer version to play online, the
+  game asked you to update even with the latest launcher.
+
 ## 0.6.12
 
 - The campaign keeps the difficulty you choose. Going back to the main menu and choosing
