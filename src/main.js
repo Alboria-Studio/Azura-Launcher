@@ -28,7 +28,7 @@ import {
   selectedGpu,
   setDetectedSystem,
 } from "./graphics.js";
-import { canStartUpdate, updateButtonState } from "./update.js";
+import { canStartUpdate, shouldForceUpdate, updateBlocksPlay, updateButtonState } from "./update.js";
 import { minutesUntil, noticeKey, serviceView } from "./alboriaService.js";
 import { setupFriends } from "./friendsPanel.js";
 import {
@@ -142,6 +142,8 @@ const state = {
   // null (not installing) or a percentage, -1 while the size is unknown.
   update: null,
   updateProgress: null,
+  // Whether installing the update failed in this session (then it is no longer forced).
+  updateFailed: false,
   // Whether the confirmation under the update button is showing.
   updateConfirming: false,
   // How Alboria is (alboria_status): undefined before the first answer, null when it could not be
@@ -666,6 +668,11 @@ const launchErrorMessage = (error) => {
  * main menu is up; the result is whether the game started.
  */
 const startGame = async (joinCode = null) => {
+  // A newer launcher was found: it installs first (and restarts), nobody plays on an old one.
+  if (updateBlocksPlay(state.update, state.updateFailed)) {
+    startLauncherUpdate();
+    return false;
+  }
   if (!isInstalled()) {
     showView("install");
     document.getElementById("pick-game").focus();
@@ -1448,6 +1455,8 @@ const renderUpdate = () => {
   if (state.updateConfirming) {
     document.getElementById("update-confirm-text").textContent = t("update.confirm", { version: state.update.version });
   }
+  // Updates are forced: as soon as one can start (the game closed), it does, without asking.
+  if (shouldForceUpdate(state.update, state.updateProgress, state.game, state.updateFailed)) startLauncherUpdate();
 };
 
 /**
@@ -1464,6 +1473,7 @@ const startLauncherUpdate = async () => {
     await installUpdate();
   } catch (error) {
     console.error("Installing the update failed:", error);
+    state.updateFailed = true;
     state.updateProgress = null;
     renderUpdate();
     toast(t("update.failed"));

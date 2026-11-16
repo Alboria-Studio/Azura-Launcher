@@ -14,6 +14,9 @@ indented lines.
   rest; errors are always kept whole. The file stays small enough to send by email.
 - The diagnostic file says the computer's time zone, so the logs of two players of the same
   game (a co-op host and client in different countries) can be lined up.
+- The launcher updates itself as soon as a new version is out: it installs it on its own when
+  the game is closed (or right after you close it), and Play waits for it. Everyone plays on the
+  same version.
 - The downloadable content's multiplayer characters (Tai, Valera, RAAM, Elite Theron, Classic
   Carmine, Savage Creeper and Savage Marauder) are now yours when you choose them in Versus or
   Horde. Until now the game gave you Marcus or a Drone instead. Needs RAAM's Shadow installed.
