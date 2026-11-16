@@ -6,6 +6,28 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.11
+
+- The diagnostic file holds much more of each game session: its whole log, also when the game
+  split it into several files during a long session, from the last four sessions. Lines the game
+  repeats hundreds of times are shortened, with a count of each, so they no longer push out the
+  rest; errors are always kept whole. The file stays small enough to send by email.
+- The diagnostic file says the computer's time zone, so the logs of two players of the same
+  game (a co-op host and client in different countries) can be lined up.
+- The launcher updates itself as soon as a new version is out: it installs it on its own when
+  the game is closed (or right after you close it), and Play waits for it. Everyone plays on the
+  same version.
+- The downloadable content's multiplayer characters (Tai, Valera, RAAM, Elite Theron, Classic
+  Carmine, Savage Creeper and Savage Marauder) are now yours when you choose them in Versus or
+  Horde. Until now the game gave you Marcus or a Drone instead. Needs RAAM's Shadow installed.
+- RAAM's Shadow plays more like it does with the game's last update: emergence holes seal and
+  close as the levels expect, the satellite's camera survives a checkpoint, the squad no longer
+  wastes fire on RAAM's Kryll shield, RAAM's Reaver reacts to hits as it should, the Brumak aims
+  at the convoy, the add-on's weapon tips show, and the School's Berserker is as tough as
+  intended. Continue picks up the add-on's newest save when you choose RAAM's Shadow, and the
+  main campaign's when you choose the campaign.
+- On a Mac the game's memory no longer keeps growing during long multiplayer sessions.
+
 ## 0.6.10
 
 - A diagnostic file made after playing now holds that game session's logs. Until now the
