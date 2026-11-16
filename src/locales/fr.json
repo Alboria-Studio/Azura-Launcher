@@ -276,7 +276,10 @@
     "confirm": "Le launcher télécharge la version {version} et redémarre. Votre jeu, vos sauvegardes et vos réglages restent tels quels.",
     "confirmYes": "Mettre à jour et redémarrer",
     "cancel": "Annuler",
-    "closeGame": "Fermez le jeu pour mettre à jour le launcher"
+    "closeGame": "Fermez le jeu pour mettre à jour le launcher",
+    "waitingTitle": "Azura {version} est prête.",
+    "waitingGame": "Elle s'installe dès que vous fermez le jeu. D'ici là, vous ne pouvez pas jouer en ligne.",
+    "installed": "Azura {version} installée. Le jeu est prêt."
   },
   "saves": {
     "title": "Sauvegardes",
@@ -627,6 +630,24 @@
       "diskFull": "Le disque est plein : libérez de l'espace ou choisissez un autre emplacement.",
       "unwritable": "Impossible d'écrire à cet emplacement : choisissez-en un autre.",
       "io": "Le fichier de diagnostic n'a pas pu être écrit : {detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "Mise à jour",
+    "notes": "Nouveautés de la {version}",
+    "step": {
+      "download": "Téléchargement",
+      "verify": "Signature",
+      "install": "Installation",
+      "restart": "Redémarrage",
+      "game": "Jeu"
+    },
+    "doing": {
+      "download": "Téléchargement…",
+      "verify": "Vérification de la signature…",
+      "install": "Installation…",
+      "restart": "Redémarrage du launcher…",
+      "game": "Préparation du jeu…"
     }
   }
 }

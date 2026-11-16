@@ -276,7 +276,10 @@
     "confirm": "A launcher letölti a(z) {version} verziót, és újraindul. A játék, a mentések és a beállítások változatlanok maradnak.",
     "confirmYes": "Frissítés és újraindítás",
     "cancel": "Mégse",
-    "closeGame": "Zárd be a játékot a launcher frissítéséhez"
+    "closeGame": "Zárd be a játékot a launcher frissítéséhez",
+    "waitingTitle": "Az Azura {version} készen áll.",
+    "waitingGame": "A játék bezárása után azonnal települ. Addig nem játszhatsz online.",
+    "installed": "Az Azura {version} telepítve. A játék kész."
   },
   "saves": {
     "title": "Mentések",
@@ -627,6 +630,24 @@
       "diskFull": "A lemez megtelt: szabadíts fel helyet, vagy válassz másik helyet.",
       "unwritable": "Erre a helyre nem lehet írni: válassz másikat.",
       "io": "A diagnosztikai fájlt nem sikerült megírni: {detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "Frissítés",
+    "notes": "A {version} újdonságai",
+    "step": {
+      "download": "Letöltés",
+      "verify": "Aláírás",
+      "install": "Telepítés",
+      "restart": "Újraindítás",
+      "game": "Játék"
+    },
+    "doing": {
+      "download": "Letöltés…",
+      "verify": "Az aláírás ellenőrzése…",
+      "install": "Telepítés…",
+      "restart": "A launcher újraindítása…",
+      "game": "A játék előkészítése…"
     }
   }
 }

@@ -21,12 +21,21 @@ pub struct ReleaseNotes {
 /// section or the section has no items. An item may continue on indented lines.
 pub fn notes_for(changelog: &str, version: &str) -> Option<ReleaseNotes> {
     let heading = format!("## {version}");
-    let mut lines = changelog.lines().skip_while(|line| line.trim_end() != heading).skip(1);
+    let section: Vec<&str> = changelog
+        .lines()
+        .skip_while(|line| line.trim_end() != heading)
+        .skip(1)
+        .take_while(|line| !line.starts_with("## "))
+        .collect();
+    let items = list_items(&section.join("\n"));
+    (!items.is_empty()).then(|| ReleaseNotes { version: version.to_owned(), items })
+}
+
+/// The list items (`- `) of a changelog section's text, without their `- `: also the notes an
+/// update carries, which are its version's section. An item may continue on indented lines.
+pub fn list_items(text: &str) -> Vec<String> {
     let mut items: Vec<String> = Vec::new();
-    for line in lines.by_ref() {
-        if line.starts_with("## ") {
-            break;
-        }
+    for line in text.lines() {
         if let Some(item) = line.strip_prefix("- ") {
             items.push(item.trim().to_owned());
         } else if line.starts_with("  ") && !line.trim().is_empty() {
@@ -36,7 +45,7 @@ pub fn notes_for(changelog: &str, version: &str) -> Option<ReleaseNotes> {
             }
         }
     }
-    (!items.is_empty()).then(|| ReleaseNotes { version: version.to_owned(), items })
+    items
 }
 
 /// The notes of the running launcher's version (`version`), from the built-in changelog.

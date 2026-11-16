@@ -1151,14 +1151,28 @@ async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, S
     updater::check(&app).await
 }
 
-/// Installs the newer launcher version and restarts into it. Restarting would leave the game
-/// without its launcher, so it waits until the game is closed.
+/// Installs the newer launcher version in the update window and restarts into it. Restarting
+/// would leave the game without its launcher, so it waits until the game is closed.
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle, process: tauri::State<'_, GameProcess>) -> Result<(), String> {
     if process.is_running() {
         return Err("the game is running: close it to update the launcher".into());
     }
     updater::install(app).await
+}
+
+/// The update under way, for the update window, and for the main one to know it has to prepare
+/// the game before showing itself (see `updater.rs`). `None` when there is none.
+#[tauri::command]
+fn update_state(state: tauri::State<'_, updater::UpdateState>) -> Option<updater::PendingUpdate> {
+    state.get()
+}
+
+/// Ends an update once the game is ready: the update window closes and the launcher shows itself.
+/// Returns the update that ended, if any.
+#[tauri::command]
+fn finish_update(app: tauri::AppHandle) -> Option<updater::PendingUpdate> {
+    updater::finish(&app)
 }
 
 /// Builds and runs the Tauri application. Blocks until the last window closes.
@@ -1172,6 +1186,7 @@ pub fn run() {
         .manage(Alboria::default())
         .manage(AlboriaEvents::default())
         .manage(LastDiagnostic::default())
+        .manage(updater::UpdateState::default())
         .invoke_handler(tauri::generate_handler![
             pick_game_folder,
             pick_game_image,
@@ -1194,6 +1209,8 @@ pub fn run() {
             change_saves_folder,
             check_for_update,
             install_update,
+            update_state,
+            finish_update,
             get_save_status,
             repair_saves,
             reset_saves,
@@ -1245,6 +1262,8 @@ pub fn run() {
             if let Ok(dir) = runtime_dir(app.handle()) {
                 builder::recover(&dir);
             }
+            // An update installed just before this start carries on in its own window.
+            updater::resume(app.handle());
             // Debug builds log to the terminal that started them; release builds stay quiet.
             if cfg!(debug_assertions) {
                 app.handle().plugin(

@@ -276,7 +276,10 @@
     "confirm": "Launcher stáhne verzi {version} a restartuje se. Hra, uložené pozice a nastavení zůstanou beze změny.",
     "confirmYes": "Aktualizovat a restartovat",
     "cancel": "Zrušit",
-    "closeGame": "Pro aktualizaci launcheru zavřete hru"
+    "closeGame": "Pro aktualizaci launcheru zavřete hru",
+    "waitingTitle": "Azura {version} je připravena.",
+    "waitingGame": "Nainstaluje se, jakmile zavřete hru. Do té doby nemůžete hrát online.",
+    "installed": "Azura {version} nainstalována. Hra je připravena."
   },
   "saves": {
     "title": "Uložené hry",
@@ -627,6 +630,24 @@
       "diskFull": "Disk je plný: uvolněte místo nebo zvolte jiné umístění.",
       "unwritable": "Do tohoto umístění nelze zapisovat: zvolte jiné.",
       "io": "Diagnostický soubor se nepodařilo zapsat: {detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "Aktualizace",
+    "notes": "Novinky ve verzi {version}",
+    "step": {
+      "download": "Stahování",
+      "verify": "Podpis",
+      "install": "Instalace",
+      "restart": "Restart",
+      "game": "Hra"
+    },
+    "doing": {
+      "download": "Stahování…",
+      "verify": "Kontrola podpisu…",
+      "install": "Instalace…",
+      "restart": "Restartování launcheru…",
+      "game": "Příprava hry…"
     }
   }
 }

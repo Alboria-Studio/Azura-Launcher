@@ -276,7 +276,10 @@
     "confirm": "Der Launcher lädt {version} herunter und startet neu. Dein Spiel, deine Spielstände und Einstellungen bleiben, wie sie sind.",
     "confirmYes": "Aktualisieren und neu starten",
     "cancel": "Abbrechen",
-    "closeGame": "Schließe das Spiel, um den Launcher zu aktualisieren"
+    "closeGame": "Schließe das Spiel, um den Launcher zu aktualisieren",
+    "waitingTitle": "Azura {version} ist bereit.",
+    "waitingGame": "Sie wird installiert, sobald du das Spiel schließt. Bis dahin kannst du nicht online spielen.",
+    "installed": "Azura {version} installiert. Das Spiel ist bereit."
   },
   "saves": {
     "title": "Spielstände",
@@ -627,6 +630,24 @@
       "diskFull": "Der Datenträger ist voll: Gib Speicher frei oder wähle einen anderen Ort.",
       "unwritable": "An diesen Ort kann nicht geschrieben werden: Wähle einen anderen.",
       "io": "Die Diagnosedatei konnte nicht geschrieben werden: {detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "Wird aktualisiert",
+    "notes": "Neu in {version}",
+    "step": {
+      "download": "Download",
+      "verify": "Signatur",
+      "install": "Installation",
+      "restart": "Neustart",
+      "game": "Spiel"
+    },
+    "doing": {
+      "download": "Wird heruntergeladen…",
+      "verify": "Signatur wird geprüft…",
+      "install": "Wird installiert…",
+      "restart": "Launcher wird neu gestartet…",
+      "game": "Spiel wird vorbereitet…"
     }
   }
 }

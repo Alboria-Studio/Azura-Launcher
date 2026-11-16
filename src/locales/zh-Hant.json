@@ -276,7 +276,10 @@
     "confirm": "啟動器會下載 {version} 並重新啟動。你的遊戲、存檔和設定都會保持不變。",
     "confirmYes": "更新並重新啟動",
     "cancel": "取消",
-    "closeGame": "請關閉遊戲以更新啟動器"
+    "closeGame": "請關閉遊戲以更新啟動器",
+    "waitingTitle": "Azura {version} 已就緒。",
+    "waitingGame": "關閉遊戲後就會立即安裝。在此之前無法進行線上遊戲。",
+    "installed": "Azura {version} 已安裝。遊戲已就緒。"
   },
   "saves": {
     "title": "遊戲存檔",
@@ -627,6 +630,24 @@
       "diskFull": "磁碟已滿:請釋放空間或選擇其他位置。",
       "unwritable": "無法寫入該位置:請選擇其他位置。",
       "io": "無法寫入診斷檔案:{detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "正在更新",
+    "notes": "{version} 新功能",
+    "step": {
+      "download": "下載",
+      "verify": "簽章",
+      "install": "安裝",
+      "restart": "重新啟動",
+      "game": "遊戲"
+    },
+    "doing": {
+      "download": "正在下載…",
+      "verify": "正在檢查簽章…",
+      "install": "正在安裝…",
+      "restart": "正在重新啟動啟動器…",
+      "game": "正在準備遊戲…"
     }
   }
 }

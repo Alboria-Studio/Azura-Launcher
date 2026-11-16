@@ -268,6 +268,15 @@ export const checkForUpdate = async () => (isNativeApp ? tauri.core.invoke("chec
 /** Installs the newer version and restarts the launcher; rejects with a message on failure. */
 export const installUpdate = async () => tauri.core.invoke("install_update");
 
+/**
+ * The update under way (updater.rs: { from, to, notes, phase }), or null: after an update's
+ * restart, the launcher prepares the game before it shows itself.
+ */
+export const getUpdateState = async () => (isNativeApp ? tauri.core.invoke("update_state") : null);
+
+/** Ends an update: its window closes and the launcher shows itself. Resolves to the update, or null. */
+export const finishUpdate = async () => (isNativeApp ? tauri.core.invoke("finish_update") : null);
+
 /** Calls `listener` with { downloaded, total } while an update downloads. */
 export const onUpdateProgress = (listener) => {
   if (isNativeApp) return tauri.event.listen("update-progress", (event) => listener(event.payload));

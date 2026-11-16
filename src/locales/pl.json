@@ -276,7 +276,10 @@
     "confirm": "Launcher pobierze wersję {version} i uruchomi się ponownie. Gra, zapisy i ustawienia pozostaną bez zmian.",
     "confirmYes": "Aktualizuj i uruchom ponownie",
     "cancel": "Anuluj",
-    "closeGame": "Zamknij grę, aby zaktualizować launcher"
+    "closeGame": "Zamknij grę, aby zaktualizować launcher",
+    "waitingTitle": "Azura {version} jest gotowa.",
+    "waitingGame": "Zainstaluje się, gdy tylko zamkniesz grę. Do tego czasu nie możesz grać online.",
+    "installed": "Zainstalowano Azura {version}. Gra jest gotowa."
   },
   "saves": {
     "title": "Zapisy gry",
@@ -627,6 +630,24 @@
       "diskFull": "Dysk jest pełny: zwolnij miejsce lub wybierz inne miejsce.",
       "unwritable": "Nie można zapisać w tym miejscu: wybierz inne.",
       "io": "Nie udało się zapisać pliku diagnostycznego: {detail}"
+    }
+  },
+  "updateWindow": {
+    "title": "Aktualizacja",
+    "notes": "Nowości w {version}",
+    "step": {
+      "download": "Pobieranie",
+      "verify": "Podpis",
+      "install": "Instalacja",
+      "restart": "Restart",
+      "game": "Gra"
+    },
+    "doing": {
+      "download": "Pobieranie…",
+      "verify": "Sprawdzanie podpisu…",
+      "install": "Instalowanie…",
+      "restart": "Ponowne uruchamianie launchera…",
+      "game": "Przygotowywanie gry…"
     }
   }
 }
