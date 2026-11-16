@@ -7,9 +7,10 @@
 # (alboria-notes:release-kits.md). scripts/fetch-kit.sh downloads the pinned kit and checks it
 # against these hashes. `version` is the launcher release the kit was built for (none for kits
 # published before kit versions existed).
-revision = "adeba09"
+version = "0.6.12"
+revision = "dbbc47c"
 
 [sha256]
-mac-arm64 = "6c4e8bce4e128a8aa922896d447a90e824d375ca882ef95d76edb9b1ed087623"
-linux-amd64 = "5b9ee550635cbf218bae3a69aab04c330308dd71601324001624a780bde06bcf"
-win-amd64 = "5a00673599d25808a97be184cf9970fa816181b00e904ed9323af8d5bd935021"
+mac-arm64 = "42a528a9f696047c225788f1be9fe139dad12d76c9e6217b84cf3e4d7d7b3d31"
+linux-amd64 = "bb55cca5735a00fa7530637c1a866448b960b7c3c09b94e3e4886008b7df6678"
+win-amd64 = "d4a52ebb60bf749d50d57d2287d8a1d781c08b4a60ca57197d23b9f6ff7588d4"

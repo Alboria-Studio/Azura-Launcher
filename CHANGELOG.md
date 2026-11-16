@@ -6,6 +6,24 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.12
+
+- The campaign keeps the difficulty you choose. Going back to the main menu and choosing
+  Continue could turn it into Hardcore, because the save made at the start of each chapter
+  recorded Hardcore whatever you had chosen. Saves made before this version keep the difficulty
+  they recorded: start that chapter again to fix one.
+- Continue picks your newest save of the campaign you choose, RAAM's Shadow or the main
+  campaign, instead of the newest of either.
+- A modern look for the active reload, as in Gears of War: E-Day: the perfect zone of the
+  reload bar is gold, and after a perfect reload its bonus rounds show in gold in your magazine,
+  with a glint of sunlight running over them, until you fire them or the bonus ends. Options,
+  Game, Active reload: Modern (the default) or Classic, the game's own look. It only changes
+  what you see; the bonus itself is the game's.
+- A new mutator for Arcade and Horde, Perfect Ammo (Easy, -15 % experience): the bonus of a
+  perfect active reload lasts until you spend those rounds, instead of running out over time.
+  Switching weapons still ends it. The host chooses it like any other mutator; matchmade matches
+  never use it.
+
 ## 0.6.11
 
 - The diagnostic file holds much more of each game session: its whole log, also when the game
