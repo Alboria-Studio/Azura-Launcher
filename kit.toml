@@ -4,9 +4,9 @@
 # uploads it to https://updates.alboria.org/kits/<revision>/azura-kit-<platform>.tar.gz; that
 # workflow prints the lines to paste here. scripts/fetch-kit.sh downloads the pinned kit and checks
 # it against these hashes.
-revision = "1806348"
+revision = "adeba09"
 
 [sha256]
-mac-arm64 = "2d91dfccffbde3c87fddb9e0e56b36ef698dd4012de1e425c51c1af124338b2e"
-linux-amd64 = "d05d4fc895f9d296df7d20fc971008c44fb97c7b67b597b56b4e3deb2acbbe99"
-win-amd64 = "11790b5d855f1359d4e7db59bea39cbbe2196bc26e119d954bcae14de775da4e"
+mac-arm64 = "6c4e8bce4e128a8aa922896d447a90e824d375ca882ef95d76edb9b1ed087623"
+linux-amd64 = "5b9ee550635cbf218bae3a69aab04c330308dd71601324001624a780bde06bcf"
+win-amd64 = "5a00673599d25808a97be184cf9970fa816181b00e904ed9323af8d5bd935021"
