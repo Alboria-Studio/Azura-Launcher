@@ -6,7 +6,7 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
-## 0.7.0
+## 0.6.13
 
 - The game tells Alboria its own version when it signs in, the same as the launcher's. It used to
   say 0.6.8 whatever its version, so when Alboria asked for a newer version to play online, the
