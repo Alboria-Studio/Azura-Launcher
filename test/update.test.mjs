@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canStartUpdate, updateButtonState } from "../src/update.js";
+import { canStartUpdate, shouldForceUpdate, updateBlocksPlay, updateButtonState } from "../src/update.js";
 
 const update = { version: "0.6.0" };
 
@@ -45,4 +45,18 @@ test("while downloading the button shows the progress and cannot start again", (
   });
   assert.equal(updateButtonState(update, -1, "idle").vars.percent, -1);
   assert.equal(canStartUpdate(update, 42, "idle"), false);
+});
+
+test("an update is forced as soon as it can start, unless it failed", () => {
+  assert.equal(shouldForceUpdate(update, null, "idle", false), true);
+  assert.equal(shouldForceUpdate(update, null, "running", false), false);
+  assert.equal(shouldForceUpdate(update, 10, "idle", false), false);
+  assert.equal(shouldForceUpdate(update, null, "idle", true), false);
+  assert.equal(shouldForceUpdate(null, null, "idle", false), false);
+});
+
+test("Play waits for an update that has not failed", () => {
+  assert.equal(updateBlocksPlay(update, false), true);
+  assert.equal(updateBlocksPlay(update, true), false);
+  assert.equal(updateBlocksPlay(null, false), false);
 });
