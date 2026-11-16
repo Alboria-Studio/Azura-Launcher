@@ -6,6 +6,15 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.12
+
+- The campaign keeps the difficulty you choose. Going back to the main menu and choosing
+  Continue could turn it into Hardcore, because the save made at the start of each chapter
+  recorded Hardcore whatever you had chosen. Saves made before this version keep the difficulty
+  they recorded: start that chapter again to fix one.
+- Continue picks your newest save of the campaign you choose, RAAM's Shadow or the main
+  campaign, instead of the newest of either.
+
 ## 0.6.11
 
 - The diagnostic file holds much more of each game session: its whole log, also when the game
