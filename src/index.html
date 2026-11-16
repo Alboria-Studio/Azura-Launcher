@@ -108,6 +108,8 @@
       <div class="rail-foot">
         <!-- Shown when a newer launcher version is published; see setupUpdates() in main.js. -->
         <button class="update-chip" id="update-button" hidden></button>
+        <!-- An update found while the game runs: it installs as soon as the game closes. -->
+        <p class="update-waiting" id="update-waiting" role="status" hidden></p>
         <!-- Updating restarts the launcher, so the button asks first (renderUpdate). -->
         <div class="update-confirm" id="update-confirm" hidden>
           <p id="update-confirm-text"></p>

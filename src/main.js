@@ -35,6 +35,8 @@ import {
   alboriaServer,
   alboriaStatus,
   checkForUpdate,
+  finishUpdate,
+  getUpdateState,
   checkGameFolder,
   getAppVersion,
   getRuntimeStatus,
@@ -800,6 +802,8 @@ const runRuntimeInstall = async () => {
     state.buildProgress = null;
     renderInstall();
     renderPlay();
+    // An update found during the build was waiting for it.
+    renderUpdate();
   }
 };
 
@@ -1433,9 +1437,21 @@ const renderLanguageOptions = () => {
  * Writes the update button (hidden, "Update to X", disabled while the game runs, or the download
  * progress) and the confirmation under it.
  */
+/** The game's state as the update sees it: building the game from its kit also keeps it waiting. */
+const gameForUpdate = () => (state.installingRuntime ? "building" : state.game);
+
 const renderUpdate = () => {
   const button = document.getElementById("update-button");
-  const view = updateButtonState(state.update, state.updateProgress, state.game);
+  const view = updateButtonState(state.update, state.updateProgress, gameForUpdate());
+  // While the game runs, the update says it waits for it, and why online is off meanwhile.
+  const waiting = document.getElementById("update-waiting");
+  waiting.hidden = !(state.update && state.game !== "idle" && state.updateProgress === null);
+  if (!waiting.hidden) {
+    waiting.replaceChildren();
+    const lead = document.createElement("b");
+    lead.textContent = t("update.waitingTitle", { version: state.update.version });
+    waiting.append(lead, " ", t("update.waitingGame"));
+  }
   button.hidden = view.hidden;
   button.disabled = view.disabled;
   button.title = view.hint ? t(view.hint) : "";
@@ -1449,14 +1465,14 @@ const renderUpdate = () => {
     button.textContent = t(view.key, view.vars);
   }
   // The confirmation only stands while the update can still start.
-  if (!canStartUpdate(state.update, state.updateProgress, state.game)) state.updateConfirming = false;
+  if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) state.updateConfirming = false;
   const confirm = document.getElementById("update-confirm");
   confirm.hidden = !state.updateConfirming;
   if (state.updateConfirming) {
     document.getElementById("update-confirm-text").textContent = t("update.confirm", { version: state.update.version });
   }
   // Updates are forced: as soon as one can start (the game closed), it does, without asking.
-  if (shouldForceUpdate(state.update, state.updateProgress, state.game, state.updateFailed)) startLauncherUpdate();
+  if (shouldForceUpdate(state.update, state.updateProgress, gameForUpdate(), state.updateFailed)) startLauncherUpdate();
 };
 
 /**
@@ -1465,7 +1481,7 @@ const renderUpdate = () => {
  * comes back here.
  */
 const startLauncherUpdate = async () => {
-  if (!canStartUpdate(state.update, state.updateProgress, state.game)) return;
+  if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) return;
   state.updateConfirming = false;
   state.updateProgress = -1;
   renderUpdate();
@@ -1493,7 +1509,7 @@ const setupUpdates = () => {
 
   // The button asks first: updating restarts the launcher.
   document.getElementById("update-button").addEventListener("click", () => {
-    if (!canStartUpdate(state.update, state.updateProgress, state.game)) return;
+    if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) return;
     state.updateConfirming = true;
     renderUpdate();
     document.getElementById("update-confirm-no").focus();
@@ -1504,14 +1520,51 @@ const setupUpdates = () => {
     renderUpdate();
   });
 
+  // Looked for at start, every UPDATE_CHECK_MS while the launcher is open, and when its window
+  // comes back to the front (at most every UPDATE_FOCUS_CHECK_MS): an update found with the game
+  // closed installs at once in its own window (renderUpdate), one found while it runs waits for it.
+  lookForUpdate();
+  setInterval(lookForUpdate, UPDATE_CHECK_MS);
+  window.addEventListener("focus", () => {
+    if (Date.now() - lastUpdateCheck >= UPDATE_FOCUS_CHECK_MS) lookForUpdate();
+  });
+  // A game that closes lets a waiting update start.
+  onGameExit(() => setTimeout(renderUpdate, 0));
+};
+
+/** How often an open launcher looks for a newer version, and at least how long between two looks. */
+const UPDATE_CHECK_MS = 15 * 60_000;
+const UPDATE_FOCUS_CHECK_MS = 60_000;
+let lastUpdateCheck = 0;
+
+/** Asks for a newer launcher; an unreachable endpoint (offline) is only logged. */
+const lookForUpdate = () => {
+  // Nothing to look for once one is found and not failed, or while one installs.
+  if ((state.update && !state.updateFailed) || state.updateProgress !== null) return;
+  lastUpdateCheck = Date.now();
   checkForUpdate()
     .then((update) => {
+      if (!update) return;
       state.update = update;
+      state.updateFailed = false;
       renderUpdate();
       // The "launcher too old" panel offers the update once the updater found it.
       renderService();
     })
     .catch((error) => console.info("No update information:", error));
+};
+
+/**
+ * After an update's restart (updater.rs keeps it across), the launcher's window stays closed while
+ * the update window prepares the game from the new kit; then it shows itself, saying the update is
+ * installed. A build that fails still shows the launcher, with the build's error on Play.
+ */
+const resumeUpdate = async () => {
+  const pending = await getUpdateState().catch(() => null);
+  if (!pending) return;
+  if (runtimeNeedsInstall() && state.runtime.source === "kit") await runRuntimeInstall();
+  const done = await finishUpdate().catch(() => null);
+  toast(t("update.installed", { version: done?.to ?? pending.to }));
 };
 
 // --- Alboria's notices and the state of the service --------------------------------------------
@@ -2189,6 +2242,7 @@ await restoreGameFolder(settings.gameFolder);
 if (!state.achievements) refreshAchievements();
 await refreshAndRenderSaves();
 setupUpdates();
+await resumeUpdate();
 setupService();
 friends = setupFriends({
   state,

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Azura</title>
+  <!-- The update window (src-tauri/src/updater.rs): the launcher closes and this takes its place
+       while it updates. A fixed 560 × 400 window: the header and the steps keep their size, and the
+       notes scroll when they are long. -->
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="update.css">
+</head>
+<body>
+  <main class="update">
+    <header class="update-top">
+      <span class="update-mark" aria-hidden="true"></span>
+      <div>
+        <h1 data-i18n="updateWindow.title"></h1>
+        <p class="update-versions"><span id="update-from"></span> → <em id="update-to"></em></p>
+      </div>
+    </header>
+    <section class="update-notes" aria-labelledby="update-notes-title">
+      <h2 id="update-notes-title"></h2>
+      <div class="update-scroll">
+        <ul id="update-notes-list"></ul>
+      </div>
+    </section>
+    <footer class="update-low">
+      <div class="update-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="update-step-now">
+        <i id="update-fill"></i>
+      </div>
+      <ol class="update-steps" id="update-steps"></ol>
+      <p class="update-now" id="update-step-now" aria-live="polite"></p>
+    </footer>
+  </main>
+  <script type="module" src="updateWindow.js"></script>
+</body>
+</html>
