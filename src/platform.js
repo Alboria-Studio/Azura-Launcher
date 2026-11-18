@@ -203,10 +203,11 @@ const SIMULATED_OUTPUT = [
 /**
  * Starts the game. Rejects with { kind, detail } when it cannot start (see runtime.rs:
  * "runtimeMissing", "alreadyRunning", "startFailed"). Its output, restarts and end arrive
- * through onGameOutput, onGameRestart and onGameExit.
+ * through onGameOutput, onGameRestart and onGameExit. With `offline` (a newer launcher is pending)
+ * the game plays in system link instead of online (lib.rs launch_args).
  */
-export const launchGame = async (joinCode = null) => {
-  if (isNativeApp) return tauri.core.invoke("launch_game", { joinCode });
+export const launchGame = async (joinCode = null, offline = false) => {
+  if (isNativeApp) return tauri.core.invoke("launch_game", { joinCode, offline });
   SIMULATED_OUTPUT.forEach(([stream, line], index) => {
     setTimeout(() => simulated.output.forEach((listener) => listener({ stream, line })), 300 * (index + 1));
   });

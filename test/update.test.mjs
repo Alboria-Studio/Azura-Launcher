@@ -7,7 +7,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canStartUpdate, shouldForceUpdate, updateBlocksPlay, updateButtonState } from "../src/update.js";
+import {
+  canStartUpdate,
+  playsOffline,
+  shouldAskUpdate,
+  shouldForceUpdate,
+  updateBlocksPlay,
+  updateButtonState,
+} from "../src/update.js";
 
 const update = { version: "0.6.0" };
 
@@ -47,16 +54,31 @@ test("while downloading the button shows the progress and cannot start again", (
   assert.equal(canStartUpdate(update, 42, "idle"), false);
 });
 
-test("an update is forced as soon as it can start, unless it failed", () => {
-  assert.equal(shouldForceUpdate(update, null, "idle", false), true);
-  assert.equal(shouldForceUpdate(update, null, "running", false), false);
-  assert.equal(shouldForceUpdate(update, 10, "idle", false), false);
-  assert.equal(shouldForceUpdate(update, null, "idle", true), false);
-  assert.equal(shouldForceUpdate(null, null, "idle", false), false);
+test("an update found at start installs without asking, unless it failed", () => {
+  assert.equal(shouldForceUpdate(update, null, "idle", false, true), true);
+  assert.equal(shouldForceUpdate(update, null, "idle", true, true), false);
+  assert.equal(shouldForceUpdate(update, 10, "idle", false, true), false);
+  assert.equal(shouldForceUpdate(null, null, "idle", false, true), false);
 });
 
-test("Play waits for an update that has not failed", () => {
-  assert.equal(updateBlocksPlay(update, false), true);
-  assert.equal(updateBlocksPlay(update, true), false);
-  assert.equal(updateBlocksPlay(null, false), false);
+test("an update found while open is never forced: it asks once it can start", () => {
+  assert.equal(shouldForceUpdate(update, null, "idle", false, false), false);
+  assert.equal(shouldAskUpdate(update, null, "idle", false, false, false), true);
+  // While the game runs it waits, and asks when the game closes.
+  assert.equal(shouldAskUpdate(update, null, "running", false, false, false), false);
+  // "Later", a failed install, a download in progress or a forced update do not ask.
+  assert.equal(shouldAskUpdate(update, null, "idle", false, false, true), false);
+  assert.equal(shouldAskUpdate(update, null, "idle", true, false, false), false);
+  assert.equal(shouldAskUpdate(update, 10, "idle", false, false, false), false);
+  assert.equal(shouldAskUpdate(update, null, "idle", false, true, false), false);
+  assert.equal(shouldAskUpdate(null, null, "idle", false, false, false), false);
+});
+
+test("Play asks while an update has no answer; after Later or a failure it plays offline", () => {
+  assert.equal(updateBlocksPlay(update, false, false), true);
+  assert.equal(updateBlocksPlay(update, false, true), false);
+  assert.equal(updateBlocksPlay(update, true, false), false);
+  assert.equal(updateBlocksPlay(null, false, false), false);
+  assert.equal(playsOffline(update), true);
+  assert.equal(playsOffline(null), false);
 });

@@ -275,10 +275,11 @@
     "failed": "Impossible d'installer la mise à jour. Réessayez plus tard.",
     "confirm": "Le launcher télécharge la version {version} et redémarre. Votre jeu, vos sauvegardes et vos réglages restent tels quels.",
     "confirmYes": "Mettre à jour et redémarrer",
-    "cancel": "Annuler",
+    "later": "Plus tard",
     "closeGame": "Fermez le jeu pour mettre à jour le launcher",
     "waitingTitle": "Azura {version} est prête.",
-    "waitingGame": "Elle s'installe dès que vous fermez le jeu. D'ici là, vous ne pouvez pas jouer en ligne.",
+    "waitingGame": "On te le proposera quand tu fermeras le jeu. D'ici là, tu ne peux pas jouer en ligne.",
+    "offline": "Tant que tu n'as pas mis à jour, tu peux jouer en solo et en coopération locale, mais pas en ligne.",
     "installed": "Azura {version} installée. Le jeu est prêt."
   },
   "saves": {

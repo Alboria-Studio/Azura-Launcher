@@ -275,10 +275,11 @@
     "failed": "Não foi possível instalar a atualização. Tente novamente mais tarde.",
     "confirm": "O launcher baixa a versão {version} e reinicia. Seu jogo, seus saves e suas configurações continuam como estão.",
     "confirmYes": "Atualizar e reiniciar",
-    "cancel": "Cancelar",
+    "later": "Mais tarde",
     "closeGame": "Feche o jogo para atualizar o launcher",
     "waitingTitle": "Azura {version} está pronta.",
-    "waitingGame": "Será instalada assim que fechares o jogo. Até lá não podes jogar online.",
+    "waitingGame": "Vamos perguntar-te quando fechares o jogo. Até lá não podes jogar online.",
+    "offline": "Até atualizares, podes jogar sozinho e em cooperativo local, mas não online.",
     "installed": "Azura {version} instalada. O jogo está pronto."
   },
   "saves": {

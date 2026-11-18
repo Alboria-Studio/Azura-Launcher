@@ -275,10 +275,11 @@
     "failed": "A frissítést nem sikerült telepíteni. Próbáld újra később.",
     "confirm": "A launcher letölti a(z) {version} verziót, és újraindul. A játék, a mentések és a beállítások változatlanok maradnak.",
     "confirmYes": "Frissítés és újraindítás",
-    "cancel": "Mégse",
+    "later": "Később",
     "closeGame": "Zárd be a játékot a launcher frissítéséhez",
     "waitingTitle": "Az Azura {version} készen áll.",
-    "waitingGame": "A játék bezárása után azonnal települ. Addig nem játszhatsz online.",
+    "waitingGame": "Megkérdezünk, amikor bezárod a játékot. Addig nem játszhatsz online.",
+    "offline": "Amíg nem frissítesz, játszhatsz egyedül és helyi kooperációban, de online nem.",
     "installed": "Az Azura {version} telepítve. A játék kész."
   },
   "saves": {

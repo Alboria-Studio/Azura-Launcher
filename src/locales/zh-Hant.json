@@ -275,10 +275,11 @@
     "failed": "無法安裝更新，請稍後再試。",
     "confirm": "啟動器會下載 {version} 並重新啟動。你的遊戲、存檔和設定都會保持不變。",
     "confirmYes": "更新並重新啟動",
-    "cancel": "取消",
+    "later": "稍後",
     "closeGame": "請關閉遊戲以更新啟動器",
     "waitingTitle": "Azura {version} 已就緒。",
-    "waitingGame": "關閉遊戲後就會立即安裝。在此之前無法進行線上遊戲。",
+    "waitingGame": "關閉遊戲時我們會再詢問你。在那之前無法線上遊玩。",
+    "offline": "更新前你可以單人遊玩和本機合作，但無法線上遊玩。",
     "installed": "Azura {version} 已安裝。遊戲已就緒。"
   },
   "saves": {

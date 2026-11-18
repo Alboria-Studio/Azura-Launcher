@@ -316,12 +316,29 @@ async fn launch_game(
     app: tauri::AppHandle,
     process: tauri::State<'_, GameProcess>,
     join_code: Option<String>,
+    offline: Option<bool>,
 ) -> Result<(), LaunchError> {
-    match join_code {
-        Some(code) if !room_code_valid(&code) => Err(LaunchError::StartFailed(format!("not a room code: {code}"))),
-        Some(code) => play(app, &process, &[&format!("--alboria_join_code={code}")]),
-        None => play(app, &process, &[]),
+    let args = launch_args(join_code.as_deref(), offline.unwrap_or(false))?;
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    play(app, &process, &args)
+}
+
+/// The game's arguments for Play: the room to join, if any, and with `offline` (a newer launcher
+/// was found and not installed) system link instead of online, as the Alboria server only takes
+/// the newest version. The command line overrides the `network_mode` in the game's settings for
+/// this run only.
+fn launch_args(join_code: Option<&str>, offline: bool) -> Result<Vec<String>, LaunchError> {
+    let mut args = Vec::new();
+    if let Some(code) = join_code {
+        if !room_code_valid(code) {
+            return Err(LaunchError::StartFailed(format!("not a room code: {code}")));
+        }
+        args.push(format!("--alboria_join_code={code}"));
     }
+    if offline {
+        args.push("--network_mode=system_link".to_owned());
+    }
+    Ok(args)
 }
 
 /// Starts the game with `extra` arguments, then minimizes the launcher when the player asked for
@@ -1280,7 +1297,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod notice_link_tests {
-    use super::{alboria_blog_url, notice_link_allowed, ALBORIA_DISCORD, room_code_valid, FRIENDS_PATHS};
+    use super::{alboria_blog_url, launch_args, notice_link_allowed, ALBORIA_DISCORD, room_code_valid, FRIENDS_PATHS};
 
     #[test]
     fn the_development_launcher_chooses_its_server() {
@@ -1305,6 +1322,14 @@ mod notice_link_tests {
         assert!(!room_code_valid("--alboria_api_url=x"));
         assert!(FRIENDS_PATHS.contains(&"/v1/friends/room"));
         assert!(!FRIENDS_PATHS.contains(&"/v1/account/delete"));
+    }
+
+    #[test]
+    fn an_offline_launch_plays_in_system_link() {
+        assert!(launch_args(None, false).unwrap().is_empty());
+        assert_eq!(launch_args(None, true).unwrap(), ["--network_mode=system_link"]);
+        assert_eq!(launch_args(Some("K7QM-2XPA"), false).unwrap(), ["--alboria_join_code=K7QM-2XPA"]);
+        assert!(launch_args(Some("--network_mode=online"), false).is_err());
     }
 
     #[test]
