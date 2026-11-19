@@ -6,6 +6,12 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.14
+
+- The launcher looks for updates before it opens, as Steam and Discord do: a small window says it
+  is checking, and a new version downloads and installs there at once, with what's new and each
+  step of the update. Then the launcher opens, already updated.
+
 ## 0.6.13
 
 - The game tells Alboria its own version when it signs in, the same as the launcher's. It used to
