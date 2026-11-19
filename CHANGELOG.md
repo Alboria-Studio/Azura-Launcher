@@ -8,9 +8,9 @@ indented lines.
 
 ## 0.6.14
 
-- The launcher looks for updates before it opens, as Steam and Discord do: a small window says it
-  is checking, and a new version downloads and installs there at once, with what's new and each
-  step of the update. Then the launcher opens, already updated.
+- Updating the launcher happens in a small window of its own, with what's new and each step of the
+  update: download, signature, install, restart and preparing the game. Then the launcher opens,
+  already updated.
 
 ## 0.6.13
 
