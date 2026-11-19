@@ -49,9 +49,15 @@ const PATCH_MANIFEST: &str = "dlc_patch.json";
 /// A file only RAAM's Shadow has: its first chapter's level.
 const RAAMS_SHADOW_MARKER: &str = "GearGame/CookedXbox360/SP_Bank_P.xxx";
 
-/// IDs of RAAM's Shadow's achievements in its package's achievement database (`spa.bin`, which also
-/// holds the game's and other packs' achievements).
-pub const RAAMS_SHADOW_ACHIEVEMENTS: std::ops::RangeInclusive<u32> = 56..=65;
+/// Each pack's own achievements: their IDs in its package's achievement database (`spa.bin`), which
+/// also holds the game's (1 to 50) and those of every pack released before it. As the runtime
+/// registers them (`runtime/src/dlc/dlc_achievements.h`). The Versus Booster Pack has none.
+pub const PACK_ACHIEVEMENTS: [(&str, std::ops::RangeInclusive<u32>); 4] = [
+    ("hordeCommandPack", 51..=55),
+    ("raamsShadow", 56..=65),
+    ("fenixRising", 66..=72),
+    ("forcesOfNature", 73..=82),
+];
 
 /// Installing a package takes a few seconds (it extracts about 2 GB); a runtime still running
 /// after this has gone wrong.
@@ -167,9 +173,17 @@ fn raams_shadow(saves: &Path) -> Option<PathBuf> {
     installed_packages(saves).into_iter().find(|package| package.join(RAAMS_SHADOW_MARKER).is_file())
 }
 
-/// RAAM's Shadow's achievement database, when the add-on is installed.
-pub fn raams_shadow_achievements(saves: &Path) -> Option<PathBuf> {
-    raams_shadow(saves).map(|package| package.join("spa.bin")).filter(|spa| spa.is_file())
+/// Each installed pack with an achievement database: its key, its `spa.bin` and its own IDs
+/// (`PACK_ACHIEVEMENTS`).
+pub fn installed_pack_achievements(saves: &Path) -> Vec<(&'static str, PathBuf, std::ops::RangeInclusive<u32>)> {
+    PACK_ACHIEVEMENTS
+        .iter()
+        .filter_map(|(pack, ids)| {
+            let folder = if *pack == "raamsShadow" { raams_shadow(saves) } else { pack_folder(saves, pack) }?;
+            let spa = folder.join("spa.bin");
+            spa.is_file().then(|| (*pack, spa, ids.clone()))
+        })
+        .collect()
 }
 
 /// Hex SHA-256 of a file.
@@ -591,6 +605,38 @@ mod tests {
         // An older runtime is not asked to make the patch.
         assert_eq!(state(&runtime, Some(&game), &saves, false).entries[0].status, DlcStatus::NeedsRuntime);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn lists_each_installed_pack_with_its_achievement_database_and_own_ids() {
+        let saves = temp("pack-achievements");
+        assert!(installed_pack_achievements(&saves).is_empty());
+        // RAAM's Shadow, found by its first level, and two map packs, found by their content ID.
+        let raams = content_dir(&saves).join("RAAMS");
+        fs::create_dir_all(raams.join("GearGame/CookedXbox360")).unwrap();
+        fs::write(raams.join(RAAMS_SHADOW_MARKER), b"").unwrap();
+        let horde = content_dir(&saves).join(format!("{}4D", MAP_PACKS[0].1.to_uppercase()));
+        let fenix = content_dir(&saves).join(format!("{}4D", MAP_PACKS[1].1.to_uppercase()));
+        for folder in [&raams, &horde, &fenix] {
+            fs::create_dir_all(folder).unwrap();
+            fs::write(folder.join("spa.bin"), b"XDBF").unwrap();
+        }
+        // An installed pack without a database is left out.
+        let versus = content_dir(&saves).join(format!("{}4D", MAP_PACKS[3].1.to_uppercase()));
+        fs::create_dir_all(&versus).unwrap();
+        let listed = installed_pack_achievements(&saves);
+        let keys: Vec<&str> = listed.iter().map(|(key, _, _)| *key).collect();
+        assert_eq!(keys, ["hordeCommandPack", "raamsShadow", "fenixRising"]);
+        assert_eq!(listed[0], ("hordeCommandPack", horde.join("spa.bin"), 51..=55));
+        assert_eq!(listed[1], ("raamsShadow", raams.join("spa.bin"), 56..=65));
+        assert_eq!(listed[2], ("fenixRising", fenix.join("spa.bin"), 66..=72));
+        // Each pack's IDs follow the previous pack's, after the game's own 1 to 50.
+        let mut next = 51;
+        for (_, ids) in PACK_ACHIEVEMENTS {
+            assert_eq!(*ids.start(), next);
+            next = ids.end() + 1;
+        }
+        let _ = fs::remove_dir_all(&saves);
     }
 
     /// A package's header as the console writes it: magic, content ID, content type and title ID.

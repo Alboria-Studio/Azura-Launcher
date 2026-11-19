@@ -14,9 +14,9 @@
 //!   Windows FILETIME: hundreds of nanoseconds since 1601).
 //!
 //! Downloadable content brings its own achievements in its package (`spa.bin`, the same database
-//! format as the executable's resource). With RAAM's Shadow installed, the launcher exports that
-//! file too (`--export_achievements_from=<spa.bin>`, kept beside the game's export) and adds the
-//! add-on's achievements (`dlc::RAAMS_SHADOW_ACHIEVEMENTS`) to the game's.
+//! format as the executable's resource). For each installed pack, the launcher exports that file
+//! too (`--export_achievements_from=<spa.bin>`, kept beside the game's export) and adds the pack's
+//! own achievements (`dlc::PACK_ACHIEVEMENTS`) to the game's.
 //!
 //! An achievement the original game hid (its `flags` lack `SHOW_UNACHIEVED_FLAG`) is sent without
 //! its name, description, gamerscore or artwork until it is unlocked, so the interface cannot
