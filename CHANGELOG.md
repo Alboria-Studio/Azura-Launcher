@@ -6,6 +6,12 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.14
+
+- Updating the launcher happens in a small window of its own, with what's new and each step of the
+  update: download, signature, install, restart and preparing the game. Then the launcher opens,
+  already updated.
+
 ## 0.6.13
 
 - The game tells Alboria its own version when it signs in, the same as the launcher's. It used to
