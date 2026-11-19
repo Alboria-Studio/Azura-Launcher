@@ -359,7 +359,8 @@ const setupReleaseNotes = async () => {
   document.getElementById("release-notes-dismiss").addEventListener("click", close);
   // Escape closes the window too (a controller's Back presses its button, data-pad-back).
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !document.getElementById("release-notes").hidden) {
+    // The update question, above it, answers Escape first.
+    if (event.key === "Escape" && !document.getElementById("release-notes").hidden && document.getElementById("update-confirm").hidden) {
       event.preventDefault();
       close();
     }
@@ -1465,13 +1466,17 @@ const renderUpdate = () => {
   // While the game runs, the update says it waits for it, and why online is off meanwhile.
   const waiting = document.getElementById("update-waiting");
   // After "Later" (or a failed install) it says the game plays without online until it updates.
+  // The rail is narrow: one short line, the whole explanation in its title.
   const putOff = state.updateDeferred || state.updateFailed;
   waiting.hidden = !(state.update && (state.game !== "idle" || putOff) && state.updateProgress === null);
   if (!waiting.hidden) {
     waiting.replaceChildren();
     const lead = document.createElement("b");
-    lead.textContent = t("update.waitingTitle", { version: state.update.version });
-    waiting.append(lead, " ", t(state.game !== "idle" ? "update.waitingGame" : "update.offline"));
+    lead.textContent = state.update.version;
+    waiting.append(lead, " · ", t("update.offlineShort"));
+    waiting.title = `${t("update.waitingTitle", { version: state.update.version })} ${t(
+      state.game !== "idle" ? "update.waitingGame" : "update.offline",
+    )}`;
   }
   button.hidden = view.hidden;
   button.disabled = view.disabled;
@@ -1489,9 +1494,7 @@ const renderUpdate = () => {
   if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) state.updateConfirming = false;
   const confirm = document.getElementById("update-confirm");
   confirm.hidden = !state.updateConfirming;
-  if (state.updateConfirming) {
-    document.getElementById("update-confirm-text").textContent = t("update.confirm", { version: state.update.version });
-  }
+  if (state.updateConfirming) renderUpdateQuestion();
   // One found as the launcher started installs without asking; one found later asks once it can
   // start (at once, or when the game closes), unless the player already answered "Later".
   const game = gameForUpdate();
@@ -1507,7 +1510,29 @@ const renderUpdate = () => {
   }
 };
 
-/** Opens the question under the update button ("Update and restart" or "Later"). */
+/**
+ * Fills the update question: the versions, the new version's notes (hidden when it has none), what
+ * updating does, and what "Later" means.
+ */
+const renderUpdateQuestion = () => {
+  const { version, currentVersion, items = [] } = state.update;
+  document.getElementById("update-confirm-title").textContent = t("update.ready", { version });
+  document.getElementById("update-confirm-from").textContent = currentVersion ?? state.launcherVersion ?? "";
+  document.getElementById("update-confirm-to").textContent = version;
+  document.getElementById("update-confirm-notes").hidden = items.length === 0;
+  document.getElementById("update-confirm-notes-title").textContent = t("updateWindow.notes", { version });
+  document.getElementById("update-confirm-list").replaceChildren(
+    ...items.map((item) => {
+      const line = document.createElement("li");
+      line.textContent = item;
+      return line;
+    }),
+  );
+  document.getElementById("update-confirm-text").textContent = t("update.confirm", { version });
+  document.getElementById("update-confirm-later").textContent = t("update.laterNote");
+};
+
+/** Opens the update question ("Update and restart" or "Later") over the launcher. */
 const askForUpdate = () => {
   if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) return;
   state.updateConfirming = true;
@@ -1551,11 +1576,19 @@ const setupUpdates = () => {
   document.getElementById("update-button").addEventListener("click", () => askForUpdate());
   document.getElementById("update-confirm-yes").addEventListener("click", () => startLauncherUpdate());
   // "Later" puts it off until the launcher's next start: the player keeps playing, without online.
-  document.getElementById("update-confirm-no").addEventListener("click", () => {
+  const later = () => {
     console.info(`Update ${state.update?.version} put off: playing without online until the next start.`);
     state.updateConfirming = false;
     state.updateDeferred = true;
     renderUpdate();
+  };
+  document.getElementById("update-confirm-no").addEventListener("click", later);
+  // Escape answers "Later" too (a controller's Back presses its button, data-pad-back).
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !document.getElementById("update-confirm").hidden) {
+      event.preventDefault();
+      later();
+    }
   });
 
   // Looked for at start, every UPDATE_CHECK_MS while the launcher is open, and when its window

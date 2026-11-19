@@ -52,6 +52,15 @@ pub struct UpdateInfo {
     pub version: String,
     pub current_version: String,
     pub notes: Option<String>,
+    /// The notes' list items (`release_notes::list_items`), for the question's "What's new".
+    pub items: Vec<String>,
+}
+
+impl UpdateInfo {
+    fn new(version: String, current_version: String, notes: Option<String>) -> Self {
+        let items = release_notes::list_items(notes.as_deref().unwrap_or(""));
+        Self { version, current_version, notes, items }
+    }
 }
 
 /// Bytes downloaded so far and the total, when the server reports it.
@@ -124,11 +133,11 @@ pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
         if app.state::<UpdateState>().get().is_some() || pending_file(app).is_ok_and(|file| file.exists()) {
             return Ok(None);
         }
-        return Ok(Some(UpdateInfo {
+        return Ok(Some(UpdateInfo::new(
             version,
-            current_version: app.package_info().version.to_string(),
-            notes: Some("- A simulated update.\n- Nothing is downloaded or installed.".to_owned()),
-        }));
+            app.package_info().version.to_string(),
+            Some("- A simulated update.\n- Nothing is downloaded or installed.".to_owned()),
+        )));
     }
     // The development launcher never updates itself: an update would turn it into the published one.
     if cfg!(feature = "dev") {
@@ -140,11 +149,7 @@ pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
         .check()
         .await
         .map_err(|e| e.to_string())?;
-    Ok(update.map(|update| UpdateInfo {
-        version: update.version.clone(),
-        current_version: update.current_version.clone(),
-        notes: update.body.clone(),
-    }))
+    Ok(update.map(|update| UpdateInfo::new(update.version.clone(), update.current_version.clone(), update.body.clone())))
 }
 
 /// Opens the update window, or brings it back, and hides the main window: to the player, the

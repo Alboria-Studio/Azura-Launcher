@@ -271,15 +271,18 @@
   },
   "update": {
     "available": "Update to {version}",
+    "ready": "Azura {version} is ready",
     "downloading": "Downloading update… {percent}",
     "failed": "The update could not be installed. Try again later.",
     "confirm": "The launcher downloads {version} and restarts. Your game, saves and settings stay as they are.",
     "confirmYes": "Update and restart",
     "later": "Later",
+    "laterNote": "Later: you can keep playing solo and local co-op. Online needs the update, which installs the next time the launcher starts.",
     "closeGame": "Close the game to update the launcher",
     "waitingTitle": "Azura {version} is ready.",
     "waitingGame": "We'll ask you when you close the game. Until then you can't play online.",
     "offline": "Until you update, you can play solo and local co-op, but not online.",
+    "offlineShort": "Online is off until you update",
     "installed": "Azura {version} installed. The game is ready."
   },
   "saves": {

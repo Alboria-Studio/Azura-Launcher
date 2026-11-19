@@ -108,16 +108,9 @@
       <div class="rail-foot">
         <!-- Shown when a newer launcher version is published; see setupUpdates() in main.js. -->
         <button class="update-chip" id="update-button" hidden></button>
-        <!-- An update found while the game runs: it installs as soon as the game closes. -->
+        <!-- An update not installed yet (the game runs, or the player chose Later): one short line,
+             the whole explanation in its title and in the question (update-confirm). -->
         <p class="update-waiting" id="update-waiting" role="status" hidden></p>
-        <!-- Updating restarts the launcher, so the button asks first (renderUpdate). -->
-        <div class="update-confirm" id="update-confirm" hidden>
-          <p id="update-confirm-text"></p>
-          <div class="update-confirm-actions">
-            <button class="btn btn-small btn-primary" id="update-confirm-yes" data-i18n="update.confirmYes"></button>
-            <button class="btn btn-small" id="update-confirm-no" data-pad-back data-i18n="update.later"></button>
-          </div>
-        </div>
         <label class="field rail-language">
           <span data-i18n="rail.language"></span>
           <select id="ui-language"></select>
@@ -674,6 +667,32 @@
        the launcher: once after it is installed or updated, and again from the rail's link;
        renderReleaseNotes() fills it. A long list scrolls inside it. While it is open, the controller
        moves only between its controls (data-modal, gamepadNav.js), and Back or Escape closes it. -->
+  <!-- THE UPDATE QUESTION: an update found while the launcher is open, or its button pressed. In the
+       update window's look (update.html): the versions, what's new, and "Update and restart" or
+       "Later" (renderUpdate in main.js). Before the other dialogs in the page, so a controller
+       moves in this one when several are open (gamepadNav.js takes the first). -->
+  <div class="update-dialog" id="update-confirm" data-modal hidden>
+    <div class="update-box" role="dialog" aria-modal="true" aria-labelledby="update-confirm-title">
+      <header class="update-box-top">
+        <span class="update-box-mark" aria-hidden="true"></span>
+        <div>
+          <h2 id="update-confirm-title"></h2>
+          <p class="update-box-versions"><span id="update-confirm-from"></span> → <em id="update-confirm-to"></em></p>
+        </div>
+      </header>
+      <section class="update-box-notes" id="update-confirm-notes">
+        <h3 id="update-confirm-notes-title"></h3>
+        <ul id="update-confirm-list"></ul>
+      </section>
+      <p class="update-box-text" id="update-confirm-text"></p>
+      <p class="update-box-later" id="update-confirm-later"></p>
+      <div class="update-box-actions">
+        <button class="btn btn-primary" id="update-confirm-yes" data-i18n="update.confirmYes"></button>
+        <button class="btn" id="update-confirm-no" data-pad-back data-i18n="update.later"></button>
+      </div>
+    </div>
+  </div>
+
   <div class="notes-dialog" id="release-notes" data-modal hidden>
     <div class="panel is-alboria place-gate notes-box" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
       <span class="alb-place" data-i18n="world.gate"></span>

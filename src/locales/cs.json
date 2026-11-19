@@ -271,15 +271,18 @@
   },
   "update": {
     "available": "Aktualizovat na {version}",
+    "ready": "Azura {version} je připravená",
     "downloading": "Stahování aktualizace… {percent}",
     "failed": "Aktualizaci se nepodařilo nainstalovat. Zkuste to později.",
     "confirm": "Launcher stáhne verzi {version} a restartuje se. Hra, uložené pozice a nastavení zůstanou beze změny.",
     "confirmYes": "Aktualizovat a restartovat",
     "later": "Později",
+    "laterNote": "Později: můžeš dál hrát sám a v místní kooperaci. Online potřebuje aktualizaci, která se nainstaluje při příštím spuštění launcheru.",
     "closeGame": "Pro aktualizaci launcheru zavřete hru",
     "waitingTitle": "Azura {version} je připravena.",
     "waitingGame": "Zeptáme se tě, až hru zavřeš. Do té doby nemůžeš hrát online.",
     "offline": "Dokud neaktualizuješ, můžeš hrát sám a v místní kooperaci, ale ne online.",
+    "offlineShort": "Bez online do aktualizace",
     "installed": "Azura {version} nainstalována. Hra je připravena."
   },
   "saves": {

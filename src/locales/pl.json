@@ -271,15 +271,18 @@
   },
   "update": {
     "available": "Aktualizuj do {version}",
+    "ready": "Azura {version} jest gotowa",
     "downloading": "Pobieranie aktualizacji… {percent}",
     "failed": "Nie udało się zainstalować aktualizacji. Spróbuj ponownie później.",
     "confirm": "Launcher pobierze wersję {version} i uruchomi się ponownie. Gra, zapisy i ustawienia pozostaną bez zmian.",
     "confirmYes": "Aktualizuj i uruchom ponownie",
     "later": "Później",
+    "laterNote": "Później: możesz dalej grać solo i w lokalnej kooperacji. Gra online wymaga aktualizacji, która zainstaluje się przy następnym uruchomieniu launchera.",
     "closeGame": "Zamknij grę, aby zaktualizować launcher",
     "waitingTitle": "Azura {version} jest gotowa.",
     "waitingGame": "Zapytamy cię po zamknięciu gry. Do tego czasu nie możesz grać online.",
     "offline": "Dopóki nie zaktualizujesz, możesz grać solo i w lokalnej kooperacji, ale nie online.",
+    "offlineShort": "Bez online do aktualizacji",
     "installed": "Zainstalowano Azura {version}. Gra jest gotowa."
   },
   "saves": {
