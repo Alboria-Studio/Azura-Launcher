@@ -20,7 +20,9 @@ export const ACHIEVEMENT_FILTERS = ["all", "unlocked", "locked", "hidden"];
  * for the Dead") is earned in Act 4, Chapter 1, where Griffin's weapon stash is, so it opens that
  * act. The others belong to no act: difficulty, collectibles and co-op go under the campaign, and
  * levels, Versus, Horde and Beast under the other modes. RAAM's Shadow's achievements (56 to 65,
- * sent only when the add-on is installed) have a section of their own, which shows only then.
+ * sent only when the add-on is installed) have a section of their own, which shows only then. The
+ * map packs' (51 to 55 and 66 to 82, sent for the packs installed) are all Versus, Horde and Beast
+ * ones, and go under the other modes as achievements the table does not name.
  * `chapters` is how many chapters the act (or the add-on) has.
  */
 export const ACHIEVEMENT_SECTIONS = [
