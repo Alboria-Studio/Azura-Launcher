@@ -9,13 +9,20 @@
 //! Azura declares them in a script patch of its own (see `alboria-notes:azura/raams-shadow-dlc.md`), which holds
 //! the object indices of the player's GearGame package, so it is made here, from the player's game
 //! files, by the runtime (`azura --make_dlc_patch=<folder>`,
-//! `runtime/src/dlc/raams_shadow_patch.h`), into `<runtime>/dlc/raams-shadow/`. Its
+//! `runtime/src/dlc/raams_shadow_patch.h`), into `<runtime>/dlc/script-patch/`. Its
 //! `dlc_patch.json` names the GearGame.xxx it was made from (by SHA-256) and the runtime that made
 //! it, and the patch is made again when either changes; a runtime update replaces the runtime
 //! folder, so a new runtime always makes its own. The launcher makes it after installing the
 //! add-on, and before starting the game when it is missing. With the add-on installed and the patch
 //! made, the game starts with the patch as its update volume and with the campaign menu's DLC
 //! option enabled.
+//!
+//! The map packs' multiplayer characters need part of that patch too: some of their characters are
+//! values of the game's character enums that only the Title Update has (Fenix Rising's Recruit
+//! Clayton Carmine), and without them choosing one gives the player Marcus. So the patch is also
+//! made, before starting the game, for a player with packs but without RAAM's Shadow: the runtime
+//! decides from the installed packages which patch they need (`PatchKind`), and a patch with the
+//! character enums alone is the update volume then, without the DLC option.
 //!
 //! The multiplayer map packs (Horde Command Pack, Fenix Rising, Forces of Nature and the Versus
 //! Booster Pack) are recognised by their package's header, before anything is installed: its title
@@ -37,8 +44,9 @@ use sha2::{Digest, Sha256};
 /// game's title ID, Marketplace content (type 2).
 const CONTENT_DIR: [&str; 3] = ["0000000000000000", "4D5308AB", "00000002"];
 
-/// Azura's script patch for RAAM's Shadow, made in the runtime folder.
-const RAAMS_SHADOW_PATCH: &str = "dlc/raams-shadow";
+/// Azura's script patch, made in the runtime folder (RAAM's Shadow's whole, or the multiplayer
+/// characters' alone: `PatchKind`).
+const SCRIPT_PATCH: &str = "dlc/script-patch";
 
 /// The patch file the game reads from its update volume.
 const PATCH_FILE: &str = "GearGame/Patches/ScriptPatch_GearGame.bin";
@@ -133,6 +141,18 @@ const GEARS_OF_WAR_3: u32 = 0x4D5308AB;
 /// Beside the saves: the folder each installed map pack was installed into, by the pack's key.
 const PACKS_REGISTRY: &str = "dlc-packages.json";
 
+/// Which script patch the runtime made for the installed packages (its JSON answer's `kind`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PatchKind {
+    /// RAAM's Shadow's whole patch: the add-on is installed.
+    RaamsShadow,
+    /// The character enums alone: the packs name characters only the Title Update has.
+    Characters,
+    /// No installed package needs a patch, and none was written.
+    None,
+}
+
 /// What the runtime prints after installing a package or making the patch.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -142,16 +162,25 @@ struct ToolReport {
     display_name: String,
     #[serde(default)]
     error: String,
+    /// The patch made; a runtime from before the kinds does not say (it always made RAAM's Shadow's).
+    #[serde(default)]
+    kind: Option<PatchKind>,
 }
 
 /// What `dlc_patch.json` records: the GearGame.xxx the patch was made from (see
-/// `game_files_identity`), and the runtime that made it (its executable's size and modification
-/// time).
+/// `game_files_identity`), the runtime that made it (its executable's size and modification
+/// time), the packages installed then (their folders' names), as installing or removing a package
+/// can change which patch is needed, and the patch made for them. A manifest from before it recorded
+/// the packages or the kind is made again.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct PatchManifest {
     #[serde(rename = "GearGame.xxx")]
     gear_game: String,
     runtime: String,
+    #[serde(default)]
+    packages: Vec<String>,
+    #[serde(default)]
+    kind: Option<PatchKind>,
 }
 
 fn content_dir(saves: &Path) -> PathBuf {
@@ -216,21 +245,27 @@ fn game_files_identity(game: &Path) -> Option<String> {
 
 /// What the patch for these game files, made by this runtime, records; `None` when the game files
 /// or the runtime executable cannot be read.
-fn expected_manifest(runtime: &Path, game: &Path) -> Option<PatchManifest> {
+fn expected_manifest(runtime: &Path, game: &Path, saves: &Path) -> Option<PatchManifest> {
     let gear_game = game_files_identity(game)?;
     let executable = fs::metadata(crate::runtime::executable_path(runtime)).ok()?;
     let modified = executable.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
-    Some(PatchManifest { gear_game, runtime: format!("{}:{modified}", executable.len()) })
+    let packages = installed_packages(saves)
+        .iter()
+        .filter_map(|package| package.file_name().map(|name| name.to_string_lossy().into_owned()))
+        .collect();
+    Some(PatchManifest { gear_game, runtime: format!("{}:{modified}", executable.len()), packages, kind: None })
 }
 
-/// Whether the patch in the runtime folder was made for these game files by this runtime.
-fn patch_ready(runtime: &Path, expected: &PatchManifest) -> bool {
-    let folder = runtime.join(RAAMS_SHADOW_PATCH);
-    folder.join(PATCH_FILE).is_file()
-        && fs::read_to_string(folder.join(PATCH_MANIFEST))
-            .ok()
-            .and_then(|text| serde_json::from_str::<PatchManifest>(&text).ok())
-            .is_some_and(|manifest| &manifest == expected)
+/// The patch in the runtime folder, when it was made for these game files, this runtime and these
+/// packages (`expected`, whose kind is not known yet), and its file is there unless it is none.
+fn ready_patch(runtime: &Path, expected: &PatchManifest) -> Option<PatchKind> {
+    let folder = runtime.join(SCRIPT_PATCH);
+    let manifest: PatchManifest = serde_json::from_str(&fs::read_to_string(folder.join(PATCH_MANIFEST)).ok()?).ok()?;
+    let kind = manifest.kind?;
+    let same = manifest.gear_game == expected.gear_game
+        && manifest.runtime == expected.runtime
+        && manifest.packages == expected.packages;
+    (same && (kind == PatchKind::None || folder.join(PATCH_FILE).is_file())).then_some(kind)
 }
 
 /// Runs the runtime for a one-off task with `arguments` and reads the JSON line it prints.
@@ -269,25 +304,36 @@ fn run_tool(runtime: &Path, arguments: &[String], timeout: Duration) -> Result<T
     serde_json::from_str(line).map_err(|_| "the runtime gave no answer".to_string())
 }
 
-/// Makes RAAM's Shadow's patch for `game` in the runtime folder, unless the one there is already
-/// for these game files and this runtime.
-pub fn prepare_patch(runtime: &Path, game: &Path) -> Result<(), String> {
-    let expected = expected_manifest(runtime, game).ok_or("the game files or the runtime cannot be read")?;
-    if patch_ready(runtime, &expected) {
-        return Ok(());
+/// Makes the script patch the packages installed in `saves` need, for `game`, in the runtime
+/// folder, unless the one there is already for these game files, this runtime and these packages,
+/// and says which it is. The runtime decides it from the packages in `saves`.
+pub fn prepare_patch(runtime: &Path, game: &Path, saves: &Path) -> Result<PatchKind, String> {
+    let mut expected = expected_manifest(runtime, game, saves).ok_or("the game files or the runtime cannot be read")?;
+    if let Some(kind) = ready_patch(runtime, &expected) {
+        return Ok(kind);
     }
-    let folder = runtime.join(RAAMS_SHADOW_PATCH);
+    let folder = runtime.join(SCRIPT_PATCH);
     let _ = fs::remove_dir_all(&folder);
     let report = run_tool(
         runtime,
-        &[format!("--game_data_root={}", game.display()), format!("--make_dlc_patch={}", folder.display())],
+        &[
+            format!("--game_data_root={}", game.display()),
+            format!("--user_data_root={}", saves.display()),
+            format!("--make_dlc_patch={}", folder.display()),
+        ],
         PATCH_TIMEOUT,
     )?;
     if !report.ok {
         return Err(report.error);
     }
+    // An older runtime made RAAM's Shadow's whole patch, whatever was installed: it is used only for
+    // the add-on.
+    let kind = report.kind.unwrap_or(if raams_shadow(saves).is_some() { PatchKind::RaamsShadow } else { PatchKind::None });
+    expected.kind = Some(kind);
+    fs::create_dir_all(&folder).map_err(|e| format!("cannot create {}: {e}", folder.display()))?;
     let manifest = serde_json::to_string_pretty(&expected).map_err(|e| e.to_string())?;
-    fs::write(folder.join(PATCH_MANIFEST), manifest).map_err(|e| format!("cannot write the patch manifest: {e}"))
+    fs::write(folder.join(PATCH_MANIFEST), manifest).map_err(|e| format!("cannot write the patch manifest: {e}"))?;
+    Ok(kind)
 }
 
 /// The downloadable content state, for the interface.
@@ -301,7 +347,7 @@ pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current:
     let raams_status = match (&raams_package, game) {
         (None, _) => DlcStatus::NotInstalled,
         (Some(_), _) if !runtime_current => DlcStatus::NeedsRuntime,
-        (Some(_), Some(game)) if prepare_patch(runtime, game).is_ok() => DlcStatus::Ready,
+        (Some(_), Some(game)) if prepare_patch(runtime, game, saves) == Ok(PatchKind::RaamsShadow) => DlcStatus::Ready,
         (Some(_), _) => DlcStatus::Unsupported,
     };
     let pack_folders: Vec<(&str, PathBuf)> =
@@ -331,19 +377,22 @@ pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current:
     }
 }
 
-/// Arguments that start RAAM's Shadow's support when it can be played: the patch as the update
-/// volume and the campaign menu's DLC option. None otherwise. Makes the patch first when needed.
+/// Arguments that start the game with the script patch the installed packages need: the patch as the
+/// update volume, and with RAAM's Shadow the campaign menu's DLC option. None when no package needs
+/// one or it cannot be made. Makes the patch first when needed.
 pub fn launch_arguments(runtime: &Path, game: Option<&Path>, saves: &Path) -> Vec<String> {
     let Some(game) = game else {
         return Vec::new();
     };
-    if raams_shadow(saves).is_none() || prepare_patch(runtime, game).is_err() {
+    if installed_packages(saves).is_empty() {
         return Vec::new();
     }
-    vec![
-        format!("--update_data_root={}", runtime.join(RAAMS_SHADOW_PATCH).display()),
-        "--dlc_campaign=true".into(),
-    ]
+    let update = format!("--update_data_root={}", runtime.join(SCRIPT_PATCH).display());
+    match prepare_patch(runtime, game, saves) {
+        Ok(PatchKind::RaamsShadow) if raams_shadow(saves).is_some() => vec![update, "--dlc_campaign=true".into()],
+        Ok(PatchKind::Characters) => vec![update],
+        _ => Vec::new(),
+    }
 }
 
 /// The first bytes of an Xbox 360 content package: LIVE and PIRS for Microsoft's, CON for a
@@ -505,7 +554,7 @@ fn install_package(runtime: &Path, game: &Path, saves: &Path, package: &Path) ->
         record_pack(saves, id, &folder.to_string_lossy())?;
     }
     if raams_shadow(saves).is_some() {
-        prepare_patch(runtime, game)?;
+        prepare_patch(runtime, game, saves)?;
     }
     Ok(report.display_name)
 }
@@ -572,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    fn starts_the_patch_only_when_it_was_made_for_these_game_files_and_runtime() {
+    fn starts_the_patch_only_when_it_was_made_for_these_game_files_runtime_and_packages() {
         let root = temp("args");
         let (runtime, game, saves) = (root.join("runtime"), root.join("game"), root.join("saves"));
         let package = content_dir(&saves).join("P");
@@ -583,16 +632,23 @@ mod tests {
         // A runtime that cannot run: the patch can only be the one already made.
         fs::create_dir_all(&runtime).unwrap();
         fs::write(crate::runtime::executable_path(&runtime), b"not a program").unwrap();
-        let folder = runtime.join(RAAMS_SHADOW_PATCH);
+        let folder = runtime.join(SCRIPT_PATCH);
         fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
         fs::write(folder.join(PATCH_FILE), b"patch").unwrap();
-        let expected = expected_manifest(&runtime, &game).unwrap();
-        let other = PatchManifest { gear_game: "0000".into(), runtime: expected.runtime.clone() };
+        let expected = expected_manifest(&runtime, &game, &saves).unwrap();
+        assert_eq!(expected.packages, ["P"]);
+        let other = PatchManifest {
+            gear_game: "0000".into(),
+            runtime: expected.runtime.clone(),
+            packages: expected.packages.clone(),
+            kind: Some(PatchKind::RaamsShadow),
+        };
         fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&other).unwrap()).unwrap();
         assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
         fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
         fs::write(folder.join(PATCH_FILE), b"patch").unwrap();
-        fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&expected).unwrap()).unwrap();
+        let made = PatchManifest { kind: Some(PatchKind::RaamsShadow), ..expected };
+        fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&made).unwrap()).unwrap();
         let args = launch_arguments(&runtime, Some(&game), &saves);
         assert_eq!(args.len(), 2);
         assert!(args[0].starts_with("--update_data_root="));
@@ -604,6 +660,47 @@ mod tests {
         assert_eq!(listed.other_packages, 0);
         // An older runtime is not asked to make the patch.
         assert_eq!(state(&runtime, Some(&game), &saves, false).entries[0].status, DlcStatus::NeedsRuntime);
+        // Another package installed: the patch must be made again (for its multiplayer characters),
+        // which this runtime cannot do.
+        fs::create_dir_all(content_dir(&saves).join("Q")).unwrap();
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn map_packs_without_raams_shadow_start_the_character_patch_alone() {
+        let root = temp("characters");
+        let (runtime, game, saves) = (root.join("runtime"), root.join("game"), root.join("saves"));
+        fs::create_dir_all(content_dir(&saves).join("FenixRising")).unwrap();
+        fs::create_dir_all(game.join("GearGame/CookedXbox360")).unwrap();
+        fs::write(game.join("GearGame/CookedXbox360/GearGame.xxx"), b"disc").unwrap();
+        // A runtime that cannot run: the patch can only be the one already made.
+        fs::create_dir_all(&runtime).unwrap();
+        fs::write(crate::runtime::executable_path(&runtime), b"not a program").unwrap();
+        let folder = runtime.join(SCRIPT_PATCH);
+        fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
+        fs::write(folder.join(PATCH_FILE), b"patch").unwrap();
+        let expected = expected_manifest(&runtime, &game, &saves).unwrap();
+        let write = |kind: Option<PatchKind>| {
+            let manifest = PatchManifest { kind, ..expected_manifest(&runtime, &game, &saves).unwrap() };
+            fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&manifest).unwrap()).unwrap();
+        };
+        // The character enums alone: the update volume, without the campaign menu's DLC option.
+        write(Some(PatchKind::Characters));
+        let args = launch_arguments(&runtime, Some(&game), &saves);
+        assert_eq!(args, [format!("--update_data_root={}", folder.display())]);
+        assert_eq!(state(&runtime, Some(&game), &saves, true).entries[0].status, DlcStatus::NotInstalled);
+        // No package needs a patch: nothing to start, with or without a patch file left.
+        write(Some(PatchKind::None));
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        fs::remove_file(folder.join(PATCH_FILE)).unwrap();
+        assert_eq!(ready_patch(&runtime, &expected), Some(PatchKind::None));
+        // A manifest from before the kinds is made again, which this runtime cannot do.
+        write(None);
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        // Nothing installed: no patch is asked for.
+        fs::remove_dir_all(content_dir(&saves)).unwrap();
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
         let _ = fs::remove_dir_all(&root);
     }
 
