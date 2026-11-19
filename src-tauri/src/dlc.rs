@@ -139,13 +139,17 @@ struct ToolReport {
 }
 
 /// What `dlc_patch.json` records: the GearGame.xxx the patch was made from (see
-/// `game_files_identity`), and the runtime that made it (its executable's size and modification
-/// time).
+/// `game_files_identity`), the runtime that made it (its executable's size and modification
+/// time), and the packages installed then (their folders' names): the patch gives the multiplayer
+/// characters their configuration names a value of their own, so installing or removing a package
+/// makes it again. A manifest from before it recorded the packages reads as none.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct PatchManifest {
     #[serde(rename = "GearGame.xxx")]
     gear_game: String,
     runtime: String,
+    #[serde(default)]
+    packages: Vec<String>,
 }
 
 fn content_dir(saves: &Path) -> PathBuf {
@@ -202,11 +206,15 @@ fn game_files_identity(game: &Path) -> Option<String> {
 
 /// What the patch for these game files, made by this runtime, records; `None` when the game files
 /// or the runtime executable cannot be read.
-fn expected_manifest(runtime: &Path, game: &Path) -> Option<PatchManifest> {
+fn expected_manifest(runtime: &Path, game: &Path, saves: &Path) -> Option<PatchManifest> {
     let gear_game = game_files_identity(game)?;
     let executable = fs::metadata(crate::runtime::executable_path(runtime)).ok()?;
     let modified = executable.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
-    Some(PatchManifest { gear_game, runtime: format!("{}:{modified}", executable.len()) })
+    let packages = installed_packages(saves)
+        .iter()
+        .filter_map(|package| package.file_name().map(|name| name.to_string_lossy().into_owned()))
+        .collect();
+    Some(PatchManifest { gear_game, runtime: format!("{}:{modified}", executable.len()), packages })
 }
 
 /// Whether the patch in the runtime folder was made for these game files by this runtime.
@@ -256,9 +264,10 @@ fn run_tool(runtime: &Path, arguments: &[String], timeout: Duration) -> Result<T
 }
 
 /// Makes RAAM's Shadow's patch for `game` in the runtime folder, unless the one there is already
-/// for these game files and this runtime.
-pub fn prepare_patch(runtime: &Path, game: &Path) -> Result<(), String> {
-    let expected = expected_manifest(runtime, game).ok_or("the game files or the runtime cannot be read")?;
+/// for these game files, this runtime and the packages installed in `saves`. The runtime reads the
+/// installed packages' multiplayer characters from `saves`.
+pub fn prepare_patch(runtime: &Path, game: &Path, saves: &Path) -> Result<(), String> {
+    let expected = expected_manifest(runtime, game, saves).ok_or("the game files or the runtime cannot be read")?;
     if patch_ready(runtime, &expected) {
         return Ok(());
     }
@@ -266,7 +275,11 @@ pub fn prepare_patch(runtime: &Path, game: &Path) -> Result<(), String> {
     let _ = fs::remove_dir_all(&folder);
     let report = run_tool(
         runtime,
-        &[format!("--game_data_root={}", game.display()), format!("--make_dlc_patch={}", folder.display())],
+        &[
+            format!("--game_data_root={}", game.display()),
+            format!("--user_data_root={}", saves.display()),
+            format!("--make_dlc_patch={}", folder.display()),
+        ],
         PATCH_TIMEOUT,
     )?;
     if !report.ok {
@@ -287,7 +300,7 @@ pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current:
     let raams_status = match (&raams_package, game) {
         (None, _) => DlcStatus::NotInstalled,
         (Some(_), _) if !runtime_current => DlcStatus::NeedsRuntime,
-        (Some(_), Some(game)) if prepare_patch(runtime, game).is_ok() => DlcStatus::Ready,
+        (Some(_), Some(game)) if prepare_patch(runtime, game, saves).is_ok() => DlcStatus::Ready,
         (Some(_), _) => DlcStatus::Unsupported,
     };
     let pack_folders: Vec<(&str, PathBuf)> =
@@ -323,7 +336,7 @@ pub fn launch_arguments(runtime: &Path, game: Option<&Path>, saves: &Path) -> Ve
     let Some(game) = game else {
         return Vec::new();
     };
-    if raams_shadow(saves).is_none() || prepare_patch(runtime, game).is_err() {
+    if raams_shadow(saves).is_none() || prepare_patch(runtime, game, saves).is_err() {
         return Vec::new();
     }
     vec![
@@ -491,7 +504,7 @@ fn install_package(runtime: &Path, game: &Path, saves: &Path, package: &Path) ->
         record_pack(saves, id, &folder.to_string_lossy())?;
     }
     if raams_shadow(saves).is_some() {
-        prepare_patch(runtime, game)?;
+        prepare_patch(runtime, game, saves)?;
     }
     Ok(report.display_name)
 }
@@ -558,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    fn starts_the_patch_only_when_it_was_made_for_these_game_files_and_runtime() {
+    fn starts_the_patch_only_when_it_was_made_for_these_game_files_runtime_and_packages() {
         let root = temp("args");
         let (runtime, game, saves) = (root.join("runtime"), root.join("game"), root.join("saves"));
         let package = content_dir(&saves).join("P");
@@ -572,8 +585,9 @@ mod tests {
         let folder = runtime.join(RAAMS_SHADOW_PATCH);
         fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
         fs::write(folder.join(PATCH_FILE), b"patch").unwrap();
-        let expected = expected_manifest(&runtime, &game).unwrap();
-        let other = PatchManifest { gear_game: "0000".into(), runtime: expected.runtime.clone() };
+        let expected = expected_manifest(&runtime, &game, &saves).unwrap();
+        assert_eq!(expected.packages, ["P"]);
+        let other = PatchManifest { gear_game: "0000".into(), runtime: expected.runtime.clone(), packages: expected.packages.clone() };
         fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&other).unwrap()).unwrap();
         assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
         fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
@@ -590,6 +604,10 @@ mod tests {
         assert_eq!(listed.other_packages, 0);
         // An older runtime is not asked to make the patch.
         assert_eq!(state(&runtime, Some(&game), &saves, false).entries[0].status, DlcStatus::NeedsRuntime);
+        // Another package installed: the patch must be made again (for its multiplayer characters),
+        // which this runtime cannot do.
+        fs::create_dir_all(content_dir(&saves).join("Q")).unwrap();
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
         let _ = fs::remove_dir_all(&root);
     }
 
