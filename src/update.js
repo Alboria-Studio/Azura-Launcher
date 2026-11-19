@@ -5,9 +5,12 @@
  * Installing an update restarts the launcher, so it waits while the game starts or runs: the
  * button stays visible but disabled, and says why.
  *
- * Updates are not optional: no player stays on an old launcher. As soon as one is found and the
- * game is closed it installs on its own (shouldForceUpdate), and Play waits for it. Only a failed
- * install lets the player go on with the old one until the launcher's next start.
+ * When an update is found decides how it is offered. One found as the launcher starts installs at
+ * once, without asking (shouldForceUpdate), as the player has not started anything yet. One found
+ * while the launcher is already open asks (shouldAskUpdate): "Update now" installs it, "Later"
+ * leaves it until the launcher's next start, which installs it. Until a found update is installed
+ * the player may still play, but not online (playsOffline): the Alboria server only takes the
+ * newest version, and the game goes in system link mode instead of failing to connect.
  */
 
 /**
@@ -38,10 +41,25 @@ export const updateButtonState = (update, progress, game) => {
 export const canStartUpdate = (update, progress, game) => !updateButtonState(update, progress, game).disabled;
 
 /**
- * Whether the launcher must install the update now, without asking: it can start, and no earlier
- * attempt in this session failed (then the player may still update from the button).
+ * Whether the launcher must install the update now, without asking: it was found as the launcher
+ * started, it can start, and no earlier attempt in this session failed (then the player may still
+ * update from the button).
  */
-export const shouldForceUpdate = (update, progress, game, failed) => !failed && canStartUpdate(update, progress, game);
+export const shouldForceUpdate = (update, progress, game, failed, atStart) =>
+  Boolean(atStart) && !failed && canStartUpdate(update, progress, game);
 
-/** Whether Play must wait for the update: one was found and has not failed to install. */
-export const updateBlocksPlay = (update, failed) => Boolean(update) && !failed;
+/**
+ * Whether the launcher asks the player to update now: an update found while it was already open,
+ * that can start, that has not failed and that the player has not put off with "Later".
+ */
+export const shouldAskUpdate = (update, progress, game, failed, atStart, deferred) =>
+  !atStart && !failed && !deferred && canStartUpdate(update, progress, game);
+
+/**
+ * Whether Play asks first: an update was found and not installed, not failed and not put off. A
+ * forced one (found at start) is installing already; the button asks about any other.
+ */
+export const updateBlocksPlay = (update, failed, deferred) => Boolean(update) && !failed && !deferred;
+
+/** Whether the game starts without online: a newer launcher was found and is not installed. */
+export const playsOffline = (update) => Boolean(update);

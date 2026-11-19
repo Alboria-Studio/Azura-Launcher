@@ -409,11 +409,56 @@ code, kbd {
 .update-chip[disabled] { cursor: progress; animation: none; }
 /* Disabled while the game runs: not busy, just waiting (the tooltip says why). */
 .update-chip[disabled][title]:not([title=""]) { cursor: not-allowed; opacity: 0.55; }
-.update-confirm { margin: -2px 0 12px; padding: 10px 12px; border: 1px solid var(--imulsion); border-radius: 12px; background: rgba(255, 184, 28, 0.06); }
-.update-confirm[hidden] { display: none; }
-.update-confirm p { font-size: 13px; line-height: 1.4; color: var(--text-dim); }
-.update-confirm-actions { display: grid; gap: 6px; margin-top: 8px; }
-.update-confirm-actions .btn { width: 100%; justify-content: center; white-space: normal; }
+/* A long word ("DELL'AGGIORNAMENTO…") breaks inside the rail instead of widening it. */
+.update-chip { overflow-wrap: anywhere; }
+
+/* A short window (down to the 620 px minimum) tightens the rail, so the update button and its line
+   fit with the menu, the language and the versions without scrolling. */
+@media (max-height: 720px) {
+  .rail { padding-top: 16px; gap: 3px; }
+  .rail .nav-item { padding-top: 6px; padding-bottom: 6px; }
+  .rail-foot { padding-top: 6px; }
+  .update-chip { font-size: 14px; letter-spacing: 0.05em; padding: 8px 10px; }
+  .update-waiting { padding: 6px 9px; margin-bottom: 6px; }
+}
+
+/* The update question: the update window's look (update.css) over the dimmed launcher, above every
+   other dialog. The notes scroll inside it, so it fits the smallest window in any language. */
+.update-dialog {
+  position: fixed; inset: 0; z-index: 45; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(6, 7, 8, 0.66);
+}
+.update-dialog[hidden] { display: none; }
+.update-box {
+  width: min(560px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 12px; padding: 22px 24px 20px;
+  border: 1px solid var(--steel-line); border-radius: 16px; background: var(--panel-solid, #16181b);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 184, 28, 0.12);
+}
+.update-box-top { display: flex; gap: 16px; align-items: center; }
+.update-box-mark {
+  flex: none; width: 46px; height: 46px; border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--imulsion-hot) 0 22%, var(--imulsion) 23% 32%, transparent 33%),
+    repeating-conic-gradient(var(--steel-hi) 0 15deg, transparent 15deg 30deg);
+  -webkit-mask: radial-gradient(circle, #000 0 62%, transparent 63% 70%, #000 71%);
+  mask: radial-gradient(circle, #000 0 62%, transparent 63% 70%, #000 71%);
+}
+.update-box-top h2 { margin: 0; font: 600 28px/1.05 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere; }
+.update-box-versions { margin: 4px 0 0; font: 600 15px var(--font-ui); letter-spacing: 0.08em; color: var(--text-dim); }
+.update-box-versions em { font-style: normal; color: var(--imulsion); }
+.update-box-notes { min-height: 0; display: flex; flex-direction: column; }
+.update-box-notes[hidden] { display: none; }
+.update-box-notes h3 { margin: 0 0 8px; font: 600 14px var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--imulsion); }
+.update-box-notes ul {
+  margin: 0; padding: 0 6px 0 0; list-style: none; display: grid; gap: 8px; max-height: 168px; overflow-y: auto;
+  font-size: 14.5px; line-height: 1.4; color: var(--text-soft);
+}
+.update-box-notes li { position: relative; padding-left: 14px; }
+.update-box-notes li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; transform: rotate(45deg); background: var(--imulsion); }
+.update-box-text, .update-box-later { margin: 0; font-size: 14px; line-height: 1.45; color: var(--text-dim); }
+.update-box-later { padding-top: 10px; border-top: 1px solid var(--steel-line); }
+.update-box-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.update-box-actions .btn { white-space: normal; text-align: center; }
 
 .rail-language { margin-bottom: 8px; }
 .rail-language select { padding: 6px 30px 6px 10px; font-size: 13px; }

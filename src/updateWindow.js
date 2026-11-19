@@ -16,6 +16,10 @@ const view = { phase: "download", download: null, build: null };
 
 /** The steps along the bottom, done, under way or still to come. */
 const renderSteps = () => {
+  // While it only looks for a newer version, the window says so: no versions, notes or steps yet.
+  const checking = view.phase === "check";
+  document.querySelector(".update").classList.toggle("checking", checking);
+  document.querySelector("h1").textContent = t(checking ? "updateWindow.checking" : "updateWindow.title");
   const now = stepIndex(view.phase);
   document.getElementById("update-steps").replaceChildren(
     ...UPDATE_STEPS.map((step, index) => {
@@ -42,6 +46,7 @@ const renderSteps = () => {
 const renderUpdate = (update) => {
   document.getElementById("update-from").textContent = update.from;
   document.getElementById("update-to").textContent = update.to;
+  document.querySelector(".update-versions").classList.toggle("only-from", !update.to);
   document.getElementById("update-notes-title").textContent = t("updateWindow.notes", { version: update.to });
   const list = document.getElementById("update-notes-list");
   list.replaceChildren(
@@ -64,7 +69,13 @@ const start = async () => {
     view.phase = update.phase;
   }
   renderSteps();
-  tauri.event.listen("update-phase", (event) => {
+  tauri.event.listen("update-phase", async (event) => {
+    // The start's check found a version and its download begins: the update now has its versions
+    // and notes, which the window reads again.
+    if (view.phase === "check" && event.payload !== "check") {
+      const found = await tauri.core.invoke("update_state");
+      if (found) renderUpdate(found);
+    }
     view.phase = event.payload;
     renderSteps();
   });

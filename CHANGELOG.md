@@ -8,9 +8,14 @@ indented lines.
 
 ## 0.6.14
 
-- Updating the launcher happens in a small window of its own, with what's new and each step of the
-  update: download, signature, install, restart and preparing the game. Then the launcher opens,
-  already updated.
+- The launcher looks for updates before it opens, as Steam and Discord do: a small window says it
+  is checking, and a new version downloads and installs there at once, with what's new and each
+  step of the update. Then the launcher opens, already updated.
+- An update found while the launcher is already open asks first, with what's new. With Later you
+  keep playing alone and in local co-op; online needs the update, which installs the next time the
+  launcher starts. It never interrupts the game: it asks when you close it.
+- The update button and its messages fit the sidebar in every language, even in the smallest
+  window.
 
 ## 0.6.13
 
