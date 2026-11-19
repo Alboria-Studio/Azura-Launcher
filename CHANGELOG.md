@@ -16,6 +16,9 @@ indented lines.
   launcher starts. It never interrupts the game: it asks when you close it.
 - The update button and its messages fit the sidebar in every language, even in the smallest
   window.
+- The achievements of the Horde Command Pack, Fenix Rising and Forces of Nature show in the
+  launcher and in the game when those packs are installed, as RAAM's Shadow's already did. They
+  cannot be earned yet: that comes in a later version.
 
 ## 0.6.13
 
