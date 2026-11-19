@@ -278,6 +278,12 @@ export const getUpdateState = async () => (isNativeApp ? tauri.core.invoke("upda
 /** Ends an update: its window closes and the launcher shows itself. Resolves to the update, or null. */
 export const finishUpdate = async () => (isNativeApp ? tauri.core.invoke("finish_update") : null);
 
+/**
+ * Ends the start's update check (updater.rs end_check): its window closes and the launcher shows.
+ * Resolves to whether the check was still on; a browser has none.
+ */
+export const endUpdateCheck = async () => (isNativeApp ? tauri.core.invoke("end_update_check") : false);
+
 /** Calls `listener` with { downloaded, total } while an update downloads. */
 export const onUpdateProgress = (listener) => {
   if (isNativeApp) return tauri.event.listen("update-progress", (event) => listener(event.payload));

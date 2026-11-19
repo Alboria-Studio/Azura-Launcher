@@ -1192,6 +1192,12 @@ fn finish_update(app: tauri::AppHandle) -> Option<updater::PendingUpdate> {
     updater::finish(&app)
 }
 
+/// Ends the start's update check (updater::end_check): the launcher shows. Whether it was on.
+#[tauri::command]
+fn end_update_check(app: tauri::AppHandle) -> bool {
+    updater::end_check(&app)
+}
+
 /// Builds and runs the Tauri application. Blocks until the last window closes.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -1228,6 +1234,7 @@ pub fn run() {
             install_update,
             update_state,
             finish_update,
+            end_update_check,
             get_save_status,
             repair_saves,
             reset_saves,
@@ -1281,6 +1288,8 @@ pub fn run() {
             }
             // An update installed just before this start carries on in its own window.
             updater::resume(app.handle());
+            // Otherwise the launcher first looks for a newer version, as Steam or Discord do.
+            updater::open_check(app.handle());
             // Debug builds log to the terminal that started them; release builds stay quiet.
             if cfg!(debug_assertions) {
                 app.handle().plugin(

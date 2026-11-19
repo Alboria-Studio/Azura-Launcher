@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "Updating",
+    "checking": "Checking for updates",
     "notes": "What's new in {version}",
     "step": {
       "download": "Download",
@@ -644,6 +645,7 @@
       "game": "Game"
     },
     "doing": {
+      "check": "Looking for a newer version…",
       "download": "Downloading…",
       "verify": "Checking the signature…",
       "install": "Installing…",

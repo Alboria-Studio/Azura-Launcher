@@ -64,6 +64,11 @@ body { background: var(--panel-solid); color: var(--text); font-family: var(--fo
 .update-scroll li { position: relative; padding-left: 14px; }
 .update-scroll li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; transform: rotate(45deg); background: var(--imulsion); }
 
+/* The start's check: the mark and "Checking for updates" in the middle, a busy bar below. */
+.update.checking .update-top { flex: 1; justify-content: center; }
+.update.checking .update-notes, .update.checking .update-steps { display: none; }
+.update-versions.only-from .update-arrow, .update-versions.only-from em { display: none; }
+
 .update-low { flex: none; padding: 16px 24px 14px; background: var(--well); border-top: 1px solid var(--steel-line); }
 .update-bar { height: 8px; border-radius: 4px; background: var(--steel); overflow: hidden; }
 .update-bar i { display: block; height: 100%; width: 0; background: var(--gold-fill); box-shadow: 0 0 12px var(--imulsion-glow); transition: width 0.3s linear; }

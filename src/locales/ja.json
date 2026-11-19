@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "アップデート中",
+    "checking": "アップデートを確認中",
     "notes": "{version} の新機能",
     "step": {
       "download": "ダウンロード",
@@ -644,6 +645,7 @@
       "game": "ゲーム"
     },
     "doing": {
+      "check": "新しいバージョンを探しています…",
       "download": "ダウンロード中…",
       "verify": "署名を確認中…",
       "install": "インストール中…",

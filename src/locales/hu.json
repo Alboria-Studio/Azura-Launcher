@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "Frissítés",
+    "checking": "Frissítések keresése",
     "notes": "A {version} újdonságai",
     "step": {
       "download": "Letöltés",
@@ -644,6 +645,7 @@
       "game": "Játék"
     },
     "doing": {
+      "check": "Újabb verzió keresése…",
       "download": "Letöltés…",
       "verify": "Az aláírás ellenőrzése…",
       "install": "Telepítés…",

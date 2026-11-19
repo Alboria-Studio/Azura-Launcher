@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "正在更新",
+    "checking": "正在檢查更新",
     "notes": "{version} 新功能",
     "step": {
       "download": "下載",
@@ -644,6 +645,7 @@
       "game": "遊戲"
     },
     "doing": {
+      "check": "正在尋找新版本…",
       "download": "正在下載…",
       "verify": "正在檢查簽章…",
       "install": "正在安裝…",

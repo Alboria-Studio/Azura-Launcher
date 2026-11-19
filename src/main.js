@@ -42,6 +42,7 @@ import {
   alboriaServer,
   alboriaStatus,
   checkForUpdate,
+  endUpdateCheck,
   finishUpdate,
   getUpdateState,
   checkGameFolder,
@@ -1560,7 +1561,7 @@ const setupUpdates = () => {
   // Looked for at start, every UPDATE_CHECK_MS while the launcher is open, and when its window
   // comes back to the front (at most every UPDATE_FOCUS_CHECK_MS). The one found at start installs
   // at once in its own window (renderUpdate); one found later asks, after the game if it runs.
-  lookForUpdate(true);
+  checkAtStart();
   setInterval(lookForUpdate, UPDATE_CHECK_MS);
   window.addEventListener("focus", () => {
     if (Date.now() - lastUpdateCheck >= UPDATE_FOCUS_CHECK_MS) lookForUpdate();
@@ -1569,6 +1570,31 @@ const setupUpdates = () => {
   onGameExit(() => setTimeout(renderUpdate, 0));
 };
 
+/**
+ * The start's check, as Steam or Discord do: the update window says it looks for a newer version
+ * while this window waits hidden (updater.rs open_check). An update found installs in that same
+ * window and restarts the launcher; otherwise (nothing found, offline, or no answer within
+ * START_CHECK_MS) the check ends and the launcher shows, after START_CHECK_MIN_MS at least so the
+ * window does not just flash. An answer that comes after the launcher showed asks, as any later one.
+ */
+const checkAtStart = async () => {
+  const startedAt = Date.now();
+  const timeout = new Promise((resolve) => setTimeout(() => resolve("timeout"), START_CHECK_MS));
+  const result = await Promise.race([lookForUpdate(true), timeout]);
+  console.info(`Start's update check: ${result === "timeout" ? "no answer in time" : result ? `found ${result.version}` : "nothing new"}.`);
+  // The update found is installing in the check's window, which carries on into its steps.
+  if (state.updateProgress !== null) return;
+  await new Promise((resolve) => setTimeout(resolve, Math.max(0, START_CHECK_MIN_MS - (Date.now() - startedAt))));
+  startCheckOpen = false;
+  await endUpdateCheck().catch((error) => console.warn("Ending the start's update check failed:", error));
+};
+
+/** How long the start's check may keep the launcher waiting, and how long it shows at least. */
+const START_CHECK_MS = 8_000;
+const START_CHECK_MIN_MS = 700;
+/** Whether the start's check window still stands: an update found meanwhile installs without asking. */
+let startCheckOpen = true;
+
 /** How often an open launcher looks for a newer version, and at least how long between two looks. */
 const UPDATE_CHECK_MS = 15 * 60_000;
 const UPDATE_FOCUS_CHECK_MS = 60_000;
@@ -1576,15 +1602,17 @@ let lastUpdateCheck = 0;
 
 /**
  * Asks for a newer launcher; an unreachable endpoint (offline) is only logged. `atStart` marks the
- * look made as the launcher starts: what it finds installs without asking.
+ * look made as the launcher starts: what it finds while the start's check stands installs without
+ * asking. Resolves to the update found, or null.
  */
 const lookForUpdate = (atStart = false) => {
   // Nothing to look for once one is found and not failed, or while one installs.
-  if ((state.update && !state.updateFailed) || state.updateProgress !== null) return;
+  if ((state.update && !state.updateFailed) || state.updateProgress !== null) return Promise.resolve(null);
   lastUpdateCheck = Date.now();
-  checkForUpdate()
+  return checkForUpdate()
     .then((update) => {
-      if (!update) return;
+      if (!update) return null;
+      atStart = atStart === true && startCheckOpen;
       console.info(`Update ${update.version} found ${atStart ? "at start" : "while open"}.`);
       state.update = update;
       state.updateFailed = false;
@@ -1592,8 +1620,12 @@ const lookForUpdate = (atStart = false) => {
       renderUpdate();
       // The "launcher too old" panel offers the update once the updater found it.
       renderService();
+      return update;
     })
-    .catch((error) => console.info("No update information:", error));
+    .catch((error) => {
+      console.info("No update information:", error);
+      return null;
+    });
 };
 
 /**

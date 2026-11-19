@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "Aktualizace",
+    "checking": "Hledání aktualizací",
     "notes": "Novinky ve verzi {version}",
     "step": {
       "download": "Stahování",
@@ -644,6 +645,7 @@
       "game": "Hra"
     },
     "doing": {
+      "check": "Hledám novější verzi…",
       "download": "Stahování…",
       "verify": "Kontrola podpisu…",
       "install": "Instalace…",

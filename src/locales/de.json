@@ -635,6 +635,7 @@
   },
   "updateWindow": {
     "title": "Wird aktualisiert",
+    "checking": "Suche nach Updates",
     "notes": "Neu in {version}",
     "step": {
       "download": "Download",
@@ -644,6 +645,7 @@
       "game": "Spiel"
     },
     "doing": {
+      "check": "Suche nach einer neueren Version…",
       "download": "Wird heruntergeladen…",
       "verify": "Signatur wird geprüft…",
       "install": "Wird installiert…",

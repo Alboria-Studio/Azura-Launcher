@@ -36,6 +36,9 @@ const WINDOW: &str = "update";
 const PAGE: &str = "update.html";
 /// Its fixed size, in logical pixels.
 const WINDOW_SIZE: (f64, f64) = (560.0, 400.0);
+/// How long the start's check may keep the main window hidden at most: if the interface never ends
+/// it (it failed to load), the launcher shows itself anyway.
+const CHECK_GIVE_UP: std::time::Duration = std::time::Duration::from_secs(45);
 /// The file that carries an update across the launcher's restart.
 const PENDING_FILE: &str = "update-pending.json";
 /// Development only: a version to pretend is published, to try the update window
@@ -62,6 +65,9 @@ pub struct Progress {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum UpdatePhase {
+    /// As the launcher starts: the window says it is looking for a newer version, and the main
+    /// window waits hidden until the look ends (`end_check`).
+    Check,
     Download,
     Verify,
     Install,
@@ -304,6 +310,56 @@ pub fn resume(app: &AppHandle) {
     }
 }
 
+/// As the launcher starts, unless an update carries on (`resume`): the update window opens saying it
+/// looks for a newer version, while the main window (hidden at start, tauri.conf.json) loads behind
+/// it. The interface looks and then either installs what it found in this same window or ends the
+/// check (`end_check`), which shows the launcher.
+pub fn open_check(app: &AppHandle) {
+    if app.state::<UpdateState>().get().is_some() {
+        return;
+    }
+    let mut pending = PendingUpdate {
+        from: app.package_info().version.to_string(),
+        to: String::new(),
+        notes: Vec::new(),
+        phase: UpdatePhase::Check,
+    };
+    enter(app, &mut pending, UpdatePhase::Check);
+    if let Err(error) = open_window(app) {
+        log::warn!("The update window could not open for the start's check: {error}");
+        finish(app);
+        return;
+    }
+    // Closing the window while it looks must not leave the launcher running with no window: the
+    // check ends and the launcher shows.
+    if let Some(window) = app.get_webview_window(WINDOW) {
+        let closing = app.clone();
+        window.on_window_event(move |event| {
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                end_check(&closing);
+            }
+        });
+    }
+    let watched = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(CHECK_GIVE_UP).await;
+        if end_check(&watched) {
+            log::warn!("The start's update check was never ended: showing the launcher anyway.");
+        }
+    });
+}
+
+/// Ends the start's check when it is still on (nothing was found, or the look failed): its window
+/// closes and the launcher shows. An update under way, or one carried across a restart, is left
+/// alone. Returns whether the check was on.
+pub fn end_check(app: &AppHandle) -> bool {
+    let checking = app.state::<UpdateState>().get().is_some_and(|pending| pending.phase == UpdatePhase::Check);
+    if checking {
+        finish(app);
+    }
+    checking
+}
+
 /// Ends an update: forgets it, closes its window and shows the main one. Returns what it was, if
 /// there was one, for the interface to say it is installed.
 pub fn finish(app: &AppHandle) -> Option<PendingUpdate> {
@@ -319,6 +375,11 @@ pub fn finish(app: &AppHandle) -> Option<PendingUpdate> {
 #[cfg(test)]
 mod tests {
     use super::{PendingUpdate, UpdatePhase};
+
+    #[test]
+    fn the_check_phase_reaches_the_window_as_check() {
+        assert_eq!(serde_json::to_string(&UpdatePhase::Check).unwrap(), "\"check\"");
+    }
 
     #[test]
     fn a_pending_update_survives_the_restart_as_json() {
