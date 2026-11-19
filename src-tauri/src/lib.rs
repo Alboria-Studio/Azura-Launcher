@@ -127,25 +127,26 @@ async fn get_achievements(
         },
     };
     let saves = settings_paths(&app)?.saves_folder()?;
-    // RAAM's Shadow's own achievements, when it is installed (its database also holds the game's
-    // and other packs', which are left out). A failed export leaves them out too, and so does a
-    // runtime that needs an update (it may not know --export_achievements_from).
-    let dlc_dir = export_dir.join("raams-shadow");
+    // Each installed pack's own achievements (a pack's database also holds the game's and those of
+    // the packs released before it, which are left out). A failed export leaves them out too, and so
+    // does a runtime that needs an update (it may not know --export_achievements_from).
     let game_ids: std::collections::HashSet<u32> = export.achievements.iter().map(|exported| exported.id).collect();
-    let dlc_export = dlc::raams_shadow_achievements(&saves).and_then(|spa| {
-        achievements::read_export(&dlc_dir)
-            .or_else(|| {
-                runtime_current(&app)
-                    .then(|| achievements::export(&runtime, Path::new(&folder), &dlc_dir, Some(&spa)).ok())
-                    .flatten()
-            })
-            .map(|mut dlc_export| {
-                dlc_export.achievements.retain(|exported| {
-                    dlc::RAAMS_SHADOW_ACHIEVEMENTS.contains(&exported.id) && !game_ids.contains(&exported.id)
-                });
-                dlc_export
-            })
-    });
+    let pack_exports: Vec<(achievements::Export, std::path::PathBuf)> = dlc::installed_pack_achievements(&saves)
+        .into_iter()
+        .filter_map(|(pack, spa, ids)| {
+            let pack_dir = export_dir.join(pack);
+            achievements::read_export(&pack_dir)
+                .or_else(|| {
+                    runtime_current(&app)
+                        .then(|| achievements::export(&runtime, Path::new(&folder), &pack_dir, Some(&spa)).ok())
+                        .flatten()
+                })
+                .map(|mut pack_export| {
+                    pack_export.achievements.retain(|exported| ids.contains(&exported.id) && !game_ids.contains(&exported.id));
+                    (pack_export, pack_dir)
+                })
+        })
+        .collect();
     let unlocks = achievements::read_unlocks(&achievements::unlocks_path(&saves, &export.title_id));
     let languages: Vec<&str> = game_language
         .as_deref()
@@ -154,9 +155,7 @@ async fn get_achievements(
         .chain(std::iter::once(ui_locale.as_str()))
         .collect();
     let mut sources = vec![(&export, export_dir.as_path())];
-    if let Some(dlc_export) = &dlc_export {
-        sources.push((dlc_export, dlc_dir.as_path()));
-    }
+    sources.extend(pack_exports.iter().map(|(pack_export, pack_dir)| (pack_export, pack_dir.as_path())));
     Ok(achievements::build_state(&sources, &unlocks, &languages))
 }
 
