@@ -19,6 +19,8 @@ indented lines.
 - The achievements of the Horde Command Pack, Fenix Rising and Forces of Nature show in the
   launcher and in the game when those packs are installed, as RAAM's Shadow's already did. They
   cannot be earned yet: that comes in a later version.
+- The multiplayer characters of Fenix Rising and Forces of Nature, such as Recruit Clayton Carmine,
+  play as themselves instead of as Marcus, with or without RAAM's Shadow installed.
 
 ## 0.6.13
 
