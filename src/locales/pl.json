@@ -136,6 +136,7 @@
       "notInstalled": "Nie zainstalowano",
       "needsRuntime": "Zainstalowano · zostanie przygotowane po aktualizacji runtime",
       "unsupported": "Zainstalowano, ale nie udało się przygotować z tymi plikami gry",
+      "unsupportedDetail": "Zainstalowano, ale nie udało się przygotować: {detail}",
       "installed": "Zainstalowano · jego mapy pojawią się z trybem wieloosobowym",
       "installing": "Instalowanie… (trwa minutę)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "System zatrzymał grę.",
     "runtimeMissing": "Nie znaleziono kompilacji środowiska. Skompiluj je za pomocą scripts/build.sh i spróbuj ponownie.",
     "alreadyRunning": "Gra jest już uruchomiona.",
+    "dlcPatch": "Nie udało się przygotować zawartości do pobrania, więc gra nie została uruchomiona: {detail}",
     "startFailed": "Nie udało się uruchomić gry: {detail}",
     "installingRuntime": "Instalowanie środowiska gry…",
     "installFailed": "Instalacja środowiska nie powiodła się: {detail}",

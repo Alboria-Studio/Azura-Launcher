@@ -668,6 +668,8 @@ const launchErrorMessage = (error) => {
       return ["log.alreadyRunning", {}];
     case "savesUnavailable":
       return ["log.savesUnavailable", { detail: error?.detail ?? "" }];
+    case "dlcPatch":
+      return ["log.dlcPatch", { detail: error?.detail ?? "" }];
     default:
       return ["log.startFailed", { detail: error?.detail ?? String(error) }];
   }
@@ -1119,7 +1121,10 @@ const renderDlc = () => {
     rows.push(
       dlcRow(
         t(`install.dlcNames.${entry.id}`),
-        t(`install.dlcStatus.${entry.status}`),
+        // Why the patch could not be made, when the launcher knows it.
+        entry.detail
+          ? t("install.dlcStatus.unsupportedDetail", { detail: entry.detail })
+          : t(`install.dlcStatus.${entry.status}`),
         rowState,
         installed ? () => removeDlcEntry(entry.id) : null,
       ),

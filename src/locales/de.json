@@ -136,6 +136,7 @@
       "notInstalled": "Nicht installiert",
       "needsRuntime": "Installiert · wird nach dem Runtime-Update vorbereitet",
       "unsupported": "Installiert, konnte aber mit diesen Spieldateien nicht vorbereitet werden",
+      "unsupportedDetail": "Installiert, konnte aber nicht vorbereitet werden: {detail}",
       "installed": "Installiert · seine Karten kommen mit dem Mehrspielermodus",
       "installing": "Wird installiert … (dauert eine Minute)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "Das System hat das Spiel beendet.",
     "runtimeMissing": "Kein Runtime-Build gefunden. Erstelle ihn mit scripts/build.sh und versuche es erneut.",
     "alreadyRunning": "Das Spiel läuft bereits.",
+    "dlcPatch": "Die Zusatzinhalte konnten nicht vorbereitet werden, daher wurde das Spiel nicht gestartet: {detail}",
     "startFailed": "Das Spiel konnte nicht gestartet werden: {detail}",
     "installingRuntime": "Spiel-Runtime wird installiert…",
     "installFailed": "Installation der Runtime fehlgeschlagen: {detail}",

@@ -136,6 +136,7 @@
       "notInstalled": "Non installato",
       "needsRuntime": "Installato · pronto dopo l'aggiornamento del runtime",
       "unsupported": "Installato, ma non è stato possibile prepararlo con questi file del gioco",
+      "unsupportedDetail": "Installato, ma non è stato possibile prepararlo: {detail}",
       "installed": "Installato · le sue mappe arrivano con il multigiocatore",
       "installing": "Installazione… (richiede un minuto)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "Il sistema ha interrotto il gioco.",
     "runtimeMissing": "Nessuna compilazione del runtime trovata. Compilalo con scripts/build.sh e riprova.",
     "alreadyRunning": "Il gioco è già in esecuzione.",
+    "dlcPatch": "Non è stato possibile preparare i contenuti scaricabili, quindi il gioco non è stato avviato: {detail}",
     "startFailed": "Impossibile avviare il gioco: {detail}",
     "installingRuntime": "Installazione del runtime del gioco…",
     "installFailed": "Installazione del runtime non riuscita: {detail}",

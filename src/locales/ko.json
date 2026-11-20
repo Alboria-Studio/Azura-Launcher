@@ -136,6 +136,7 @@
       "notInstalled": "설치되지 않음",
       "needsRuntime": "설치됨 · 런타임 업데이트 후 준비됩니다",
       "unsupported": "설치되었지만 이 게임 파일로는 준비할 수 없었습니다",
+      "unsupportedDetail": "설치되었지만 준비할 수 없었습니다: {detail}",
       "installed": "설치됨 · 맵은 멀티플레이어와 함께 제공 예정",
       "installing": "설치 중… (1분 정도 걸립니다)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "시스템이 게임을 중지했습니다.",
     "runtimeMissing": "런타임 빌드를 찾을 수 없습니다. scripts/build.sh로 빌드한 후 다시 시도하세요.",
     "alreadyRunning": "게임이 이미 실행 중입니다.",
+    "dlcPatch": "다운로드 콘텐츠를 준비할 수 없어 게임을 시작하지 않았습니다: {detail}",
     "startFailed": "게임을 시작할 수 없습니다: {detail}",
     "installingRuntime": "게임 런타임을 설치하는 중…",
     "installFailed": "런타임 설치 실패: {detail}",

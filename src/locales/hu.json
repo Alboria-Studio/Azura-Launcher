@@ -136,6 +136,7 @@
       "notInstalled": "Nincs telepítve",
       "needsRuntime": "Telepítve · a runtime frissítése után készül el",
       "unsupported": "Telepítve, de ezekkel a játékfájlokkal nem sikerült előkészíteni",
+      "unsupportedDetail": "Telepítve, de nem sikerült előkészíteni: {detail}",
       "installed": "Telepítve · a pályái a többjátékos móddal érkeznek",
       "installing": "Telepítés… (egy percig tart)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "A rendszer leállította a játékot.",
     "runtimeMissing": "Nem található futtatókörnyezet-build. Készítsd el a scripts/build.sh segítségével, majd próbáld újra.",
     "alreadyRunning": "A játék már fut.",
+    "dlcPatch": "A letölthető tartalmat nem sikerült előkészíteni, ezért a játék nem indult el: {detail}",
     "startFailed": "A játékot nem sikerült elindítani: {detail}",
     "installingRuntime": "A játék futtatókörnyezetének telepítése…",
     "installFailed": "A futtatókörnyezet telepítése sikertelen: {detail}",
