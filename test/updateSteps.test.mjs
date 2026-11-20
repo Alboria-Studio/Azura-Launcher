@@ -21,3 +21,8 @@ test("the bar moves through the download and the game's build, and is busy while
   assert.equal(updateBarValue("game", 100, 50), 90);
   assert.equal(updateBarValue("game", 100, 100), 100);
 });
+
+test("the start's check is no step: the bar is busy until a version is found", () => {
+  assert.equal(updateBarValue("check", null, null), null);
+  assert.equal(updateBarValue("check", 100, 100), null);
+});

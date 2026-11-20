@@ -6,6 +6,25 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.14
+
+- The launcher looks for updates before it opens, as Steam and Discord do: a small window says it
+  is checking, and a new version downloads and installs there at once, with what's new and each
+  step of the update. Then the launcher opens, already updated.
+- An update found while the launcher is already open asks first, with what's new. With Later you
+  keep playing alone and in local co-op; online needs the update, which installs the next time the
+  launcher starts. It never interrupts the game: it asks when you close it.
+- The update button and its messages fit the sidebar in every language, even in the smallest
+  window.
+- The achievements of the Horde Command Pack, Fenix Rising and Forces of Nature show in the
+  launcher and in the game when those packs are installed, as RAAM's Shadow's already did. They
+  cannot be earned yet: that comes in a later version.
+- The multiplayer characters of Fenix Rising and Forces of Nature, such as Recruit Clayton Carmine,
+  play as themselves instead of as Marcus, with or without RAAM's Shadow installed.
+- With Steam Input on Linux, controllers Steam handles work in the game: the game uses Steam's own
+  controller when Steam hides the real one. If the system does not let the game read a controller,
+  the game now says so and how to fix it.
+
 ## 0.6.13
 
 - The game tells Alboria its own version when it signs in, the same as the launcher's. It used to

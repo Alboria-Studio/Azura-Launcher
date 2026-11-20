@@ -271,14 +271,18 @@
   },
   "update": {
     "available": "Aggiorna a {version}",
+    "ready": "Azura {version} è pronta",
     "downloading": "Download dell'aggiornamento… {percent}",
     "failed": "Impossibile installare l'aggiornamento. Riprova più tardi.",
     "confirm": "Il launcher scarica la versione {version} e si riavvia. Il gioco, i salvataggi e le impostazioni restano come sono.",
     "confirmYes": "Aggiorna e riavvia",
-    "cancel": "Annulla",
+    "later": "Più tardi",
+    "laterNote": "Più tardi: puoi continuare a giocare da solo e in cooperativa locale. L'online richiede l'aggiornamento, che si installerà al prossimo avvio del launcher.",
     "closeGame": "Chiudi il gioco per aggiornare il launcher",
     "waitingTitle": "Azura {version} è pronta.",
-    "waitingGame": "Si installa appena chiudi il gioco. Fino ad allora non puoi giocare online.",
+    "waitingGame": "Te lo chiederemo quando chiudi il gioco. Fino ad allora non puoi giocare online.",
+    "offline": "Finché non aggiorni puoi giocare da solo e in cooperativa locale, ma non online.",
+    "offlineShort": "Niente online fino all'aggiornamento",
     "installed": "Azura {version} installata. Il gioco è pronto."
   },
   "saves": {
@@ -634,6 +638,7 @@
   },
   "updateWindow": {
     "title": "Aggiornamento",
+    "checking": "Ricerca aggiornamenti",
     "notes": "Novità della {version}",
     "step": {
       "download": "Download",
@@ -643,6 +648,7 @@
       "game": "Gioco"
     },
     "doing": {
+      "check": "Cerco una versione più recente…",
       "download": "Download in corso…",
       "verify": "Verifica della firma…",
       "install": "Installazione…",

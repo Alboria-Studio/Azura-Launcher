@@ -19,6 +19,8 @@ export const stepIndex = (phase) => Math.max(0, UPDATE_STEPS.indexOf(phase));
  * @param {number | null} build  The game's build percent, null while unknown.
  */
 export const updateBarValue = (phase, download, build) => {
+  // Looking for a newer version, before any step: it has no measure.
+  if (phase === "check") return null;
   const share = 100 / UPDATE_STEPS.length;
   const index = stepIndex(phase);
   const base = index * share;

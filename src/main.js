@@ -28,13 +28,21 @@ import {
   selectedGpu,
   setDetectedSystem,
 } from "./graphics.js";
-import { canStartUpdate, shouldForceUpdate, updateBlocksPlay, updateButtonState } from "./update.js";
+import {
+  canStartUpdate,
+  playsOffline,
+  shouldAskUpdate,
+  shouldForceUpdate,
+  updateBlocksPlay,
+  updateButtonState,
+} from "./update.js";
 import { minutesUntil, noticeKey, serviceView } from "./alboriaService.js";
 import { setupFriends } from "./friendsPanel.js";
 import {
   alboriaServer,
   alboriaStatus,
   checkForUpdate,
+  endUpdateCheck,
   finishUpdate,
   getUpdateState,
   checkGameFolder,
@@ -148,6 +156,10 @@ const state = {
   updateFailed: false,
   // Whether the confirmation under the update button is showing.
   updateConfirming: false,
+  // The update was found by the look made as the launcher started (it then installs without asking).
+  updateAtStart: false,
+  // The player answered "Later": they play without online until the launcher's next start.
+  updateDeferred: false,
   // How Alboria is (alboria_status): undefined before the first answer, null when it could not be
   // reached; read only with an Alboria account (renderService).
   service: undefined,
@@ -347,7 +359,8 @@ const setupReleaseNotes = async () => {
   document.getElementById("release-notes-dismiss").addEventListener("click", close);
   // Escape closes the window too (a controller's Back presses its button, data-pad-back).
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !document.getElementById("release-notes").hidden) {
+    // The update question, above it, answers Escape first.
+    if (event.key === "Escape" && !document.getElementById("release-notes").hidden && document.getElementById("update-confirm").hidden) {
       event.preventDefault();
       close();
     }
@@ -670,9 +683,14 @@ const launchErrorMessage = (error) => {
  * main menu is up; the result is whether the game started.
  */
 const startGame = async (joinCode = null) => {
-  // A newer launcher was found: it installs first (and restarts), nobody plays on an old one.
-  if (updateBlocksPlay(state.update, state.updateFailed)) {
-    startLauncherUpdate();
+  // A newer launcher is downloading: it restarts the launcher, so the game does not start now.
+  if (state.updateProgress !== null) return false;
+  // A newer launcher was found and the player has not answered yet: Play asks first. Joining a
+  // room needs online, which an old launcher does not have, so it asks even after "Later".
+  const offline = playsOffline(state.update);
+  if (updateBlocksPlay(state.update, state.updateFailed, state.updateDeferred) || (offline && joinCode)) {
+    console.info(`Play waits for the update ${state.update.version}: asking the player.`);
+    askForUpdate();
     return false;
   }
   if (!isInstalled()) {
@@ -699,7 +717,9 @@ const startGame = async (joinCode = null) => {
   setLogState("log.starting");
   renderPlay();
   try {
-    await launchGame(joinCode);
+    // With an update pending the game starts without online (system link), see update.js.
+    if (offline) console.info(`Starting the game offline: launcher update ${state.update.version} pending.`);
+    await launchGame(joinCode, offline);
     state.game = "running";
     setLogState("log.running");
   } catch (error) {
@@ -1445,12 +1465,18 @@ const renderUpdate = () => {
   const view = updateButtonState(state.update, state.updateProgress, gameForUpdate());
   // While the game runs, the update says it waits for it, and why online is off meanwhile.
   const waiting = document.getElementById("update-waiting");
-  waiting.hidden = !(state.update && state.game !== "idle" && state.updateProgress === null);
+  // After "Later" (or a failed install) it says the game plays without online until it updates.
+  // The rail is narrow: one short line, the whole explanation in its title.
+  const putOff = state.updateDeferred || state.updateFailed;
+  waiting.hidden = !(state.update && (state.game !== "idle" || putOff) && state.updateProgress === null);
   if (!waiting.hidden) {
     waiting.replaceChildren();
     const lead = document.createElement("b");
-    lead.textContent = t("update.waitingTitle", { version: state.update.version });
-    waiting.append(lead, " ", t("update.waitingGame"));
+    lead.textContent = state.update.version;
+    waiting.append(lead, " · ", t("update.offlineShort"));
+    waiting.title = `${t("update.waitingTitle", { version: state.update.version })} ${t(
+      state.game !== "idle" ? "update.waitingGame" : "update.offline",
+    )}`;
   }
   button.hidden = view.hidden;
   button.disabled = view.disabled;
@@ -1468,11 +1494,50 @@ const renderUpdate = () => {
   if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) state.updateConfirming = false;
   const confirm = document.getElementById("update-confirm");
   confirm.hidden = !state.updateConfirming;
-  if (state.updateConfirming) {
-    document.getElementById("update-confirm-text").textContent = t("update.confirm", { version: state.update.version });
+  if (state.updateConfirming) renderUpdateQuestion();
+  // One found as the launcher started installs without asking; one found later asks once it can
+  // start (at once, or when the game closes), unless the player already answered "Later".
+  const game = gameForUpdate();
+  if (shouldForceUpdate(state.update, state.updateProgress, game, state.updateFailed, state.updateAtStart)) {
+    console.info(`Update ${state.update.version} found at start: installing without asking.`);
+    startLauncherUpdate();
+  } else if (
+    !state.updateConfirming &&
+    shouldAskUpdate(state.update, state.updateProgress, game, state.updateFailed, state.updateAtStart, state.updateDeferred)
+  ) {
+    console.info(`Update ${state.update.version} found while open: asking the player.`);
+    askForUpdate();
   }
-  // Updates are forced: as soon as one can start (the game closed), it does, without asking.
-  if (shouldForceUpdate(state.update, state.updateProgress, gameForUpdate(), state.updateFailed)) startLauncherUpdate();
+};
+
+/**
+ * Fills the update question: the versions, the new version's notes (hidden when it has none), what
+ * updating does, and what "Later" means.
+ */
+const renderUpdateQuestion = () => {
+  const { version, currentVersion, items = [] } = state.update;
+  document.getElementById("update-confirm-title").textContent = t("update.ready", { version });
+  document.getElementById("update-confirm-from").textContent = currentVersion ?? state.launcherVersion ?? "";
+  document.getElementById("update-confirm-to").textContent = version;
+  document.getElementById("update-confirm-notes").hidden = items.length === 0;
+  document.getElementById("update-confirm-notes-title").textContent = t("updateWindow.notes", { version });
+  document.getElementById("update-confirm-list").replaceChildren(
+    ...items.map((item) => {
+      const line = document.createElement("li");
+      line.textContent = item;
+      return line;
+    }),
+  );
+  document.getElementById("update-confirm-text").textContent = t("update.confirm", { version });
+  document.getElementById("update-confirm-later").textContent = t("update.laterNote");
+};
+
+/** Opens the update question ("Update and restart" or "Later") over the launcher. */
+const askForUpdate = () => {
+  if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) return;
+  state.updateConfirming = true;
+  renderUpdate();
+  document.getElementById("update-confirm-no").focus();
 };
 
 /**
@@ -1508,50 +1573,92 @@ const setupUpdates = () => {
   });
 
   // The button asks first: updating restarts the launcher.
-  document.getElementById("update-button").addEventListener("click", () => {
-    if (!canStartUpdate(state.update, state.updateProgress, gameForUpdate())) return;
-    state.updateConfirming = true;
-    renderUpdate();
-    document.getElementById("update-confirm-no").focus();
-  });
+  document.getElementById("update-button").addEventListener("click", () => askForUpdate());
   document.getElementById("update-confirm-yes").addEventListener("click", () => startLauncherUpdate());
-  document.getElementById("update-confirm-no").addEventListener("click", () => {
+  // "Later" puts it off until the launcher's next start: the player keeps playing, without online.
+  const later = () => {
+    console.info(`Update ${state.update?.version} put off: playing without online until the next start.`);
     state.updateConfirming = false;
+    state.updateDeferred = true;
     renderUpdate();
+  };
+  document.getElementById("update-confirm-no").addEventListener("click", later);
+  // Escape answers "Later" too (a controller's Back presses its button, data-pad-back).
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !document.getElementById("update-confirm").hidden) {
+      event.preventDefault();
+      later();
+    }
   });
 
   // Looked for at start, every UPDATE_CHECK_MS while the launcher is open, and when its window
-  // comes back to the front (at most every UPDATE_FOCUS_CHECK_MS): an update found with the game
-  // closed installs at once in its own window (renderUpdate), one found while it runs waits for it.
-  lookForUpdate();
+  // comes back to the front (at most every UPDATE_FOCUS_CHECK_MS). The one found at start installs
+  // at once in its own window (renderUpdate); one found later asks, after the game if it runs.
+  checkAtStart();
   setInterval(lookForUpdate, UPDATE_CHECK_MS);
   window.addEventListener("focus", () => {
     if (Date.now() - lastUpdateCheck >= UPDATE_FOCUS_CHECK_MS) lookForUpdate();
   });
-  // A game that closes lets a waiting update start.
+  // A game that closes lets a waiting update ask.
   onGameExit(() => setTimeout(renderUpdate, 0));
 };
+
+/**
+ * The start's check, as Steam or Discord do: the update window says it looks for a newer version
+ * while this window waits hidden (updater.rs open_check). An update found installs in that same
+ * window and restarts the launcher; otherwise (nothing found, offline, or no answer within
+ * START_CHECK_MS) the check ends and the launcher shows, after START_CHECK_MIN_MS at least so the
+ * window does not just flash. An answer that comes after the launcher showed asks, as any later one.
+ */
+const checkAtStart = async () => {
+  const startedAt = Date.now();
+  const timeout = new Promise((resolve) => setTimeout(() => resolve("timeout"), START_CHECK_MS));
+  const result = await Promise.race([lookForUpdate(true), timeout]);
+  console.info(`Start's update check: ${result === "timeout" ? "no answer in time" : result ? `found ${result.version}` : "nothing new"}.`);
+  // The update found is installing in the check's window, which carries on into its steps.
+  if (state.updateProgress !== null) return;
+  await new Promise((resolve) => setTimeout(resolve, Math.max(0, START_CHECK_MIN_MS - (Date.now() - startedAt))));
+  startCheckOpen = false;
+  await endUpdateCheck().catch((error) => console.warn("Ending the start's update check failed:", error));
+};
+
+/** How long the start's check may keep the launcher waiting, and how long it shows at least. */
+const START_CHECK_MS = 8_000;
+const START_CHECK_MIN_MS = 700;
+/** Whether the start's check window still stands: an update found meanwhile installs without asking. */
+let startCheckOpen = true;
 
 /** How often an open launcher looks for a newer version, and at least how long between two looks. */
 const UPDATE_CHECK_MS = 15 * 60_000;
 const UPDATE_FOCUS_CHECK_MS = 60_000;
 let lastUpdateCheck = 0;
 
-/** Asks for a newer launcher; an unreachable endpoint (offline) is only logged. */
-const lookForUpdate = () => {
+/**
+ * Asks for a newer launcher; an unreachable endpoint (offline) is only logged. `atStart` marks the
+ * look made as the launcher starts: what it finds while the start's check stands installs without
+ * asking. Resolves to the update found, or null.
+ */
+const lookForUpdate = (atStart = false) => {
   // Nothing to look for once one is found and not failed, or while one installs.
-  if ((state.update && !state.updateFailed) || state.updateProgress !== null) return;
+  if ((state.update && !state.updateFailed) || state.updateProgress !== null) return Promise.resolve(null);
   lastUpdateCheck = Date.now();
-  checkForUpdate()
+  return checkForUpdate()
     .then((update) => {
-      if (!update) return;
+      if (!update) return null;
+      atStart = atStart === true && startCheckOpen;
+      console.info(`Update ${update.version} found ${atStart ? "at start" : "while open"}.`);
       state.update = update;
       state.updateFailed = false;
+      state.updateAtStart = atStart === true;
       renderUpdate();
       // The "launcher too old" panel offers the update once the updater found it.
       renderService();
+      return update;
     })
-    .catch((error) => console.info("No update information:", error));
+    .catch((error) => {
+      console.info("No update information:", error);
+      return null;
+    });
 };
 
 /**
@@ -1769,9 +1876,7 @@ const setupService = () => {
   document.getElementById("service-panel-retry").addEventListener("click", () => refreshService());
   document.getElementById("service-panel-update").addEventListener("click", () => {
     if (!state.update) return;
-    state.updateConfirming = true;
-    renderUpdate();
-    document.getElementById("update-confirm-no").focus();
+    askForUpdate();
   });
   const stale = () => Date.now() - state.serviceReadAt > SERVICE_REFRESH_MS;
   window.addEventListener("focus", () => {

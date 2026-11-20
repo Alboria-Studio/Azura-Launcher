@@ -5,12 +5,13 @@
 # with these lines at https://updates.alboria.org/kits/versions/<version>.toml. This repository's
 # "Pin kit" workflow, run on a release branch, asks for the kit and writes them here
 # (alboria-notes:release-kits.md). scripts/fetch-kit.sh downloads the pinned kit and checks it
-# against these hashes. `version` is the launcher release the kit was built for (none for kits
-# published before kit versions existed).
-version = "0.6.13"
-revision = "e3f143d"
+# against these hashes. `version` is the kit version: the launcher release the kit was built for,
+# with the attempt for a later kit of the same release (0.6.14-2); none for kits published before
+# kit versions existed.
+version = "0.6.14-2"
+revision = "bb70a03"
 
 [sha256]
-mac-arm64 = "b24858560e3dfcbcb5b878be089534f0d963e821cd4438c7dba9e57b92f68e81"
-linux-amd64 = "e67163e1cd22c044568c8f958016fe0bc87907ff07dc7b1e92446405cd33c260"
-win-amd64 = "9a45f8abd8ee3245d15d95d24a58b8d78a486aa1de0a5a61c6affb1d7f278c56"
+mac-arm64 = "d68321650aa9e00438cc188d70828992ee7bb274dabae262749613781da0befe"
+linux-amd64 = "e568d10cc4b3c0baacc8bff9078bf1b88ef581a162d5d554abf37499fab9d2db"
+win-amd64 = "51e0e56d48b6dc475683797b91f3f69bb673a5d1c92d659f5b33c02c62f4bd9d"

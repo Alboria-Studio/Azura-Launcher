@@ -271,14 +271,18 @@
   },
   "update": {
     "available": "更新至 {version}",
+    "ready": "Azura {version} 已準備好",
     "downloading": "正在下載更新… {percent}",
     "failed": "無法安裝更新，請稍後再試。",
     "confirm": "啟動器會下載 {version} 並重新啟動。你的遊戲、存檔和設定都會保持不變。",
     "confirmYes": "更新並重新啟動",
-    "cancel": "取消",
+    "later": "稍後",
+    "laterNote": "稍後：你可以繼續單人遊玩和本機合作。線上遊玩需要更新，下次啟動啟動器時會自動安裝。",
     "closeGame": "請關閉遊戲以更新啟動器",
     "waitingTitle": "Azura {version} 已就緒。",
-    "waitingGame": "關閉遊戲後就會立即安裝。在此之前無法進行線上遊戲。",
+    "waitingGame": "關閉遊戲時我們會再詢問你。在那之前無法線上遊玩。",
+    "offline": "更新前你可以單人遊玩和本機合作，但無法線上遊玩。",
+    "offlineShort": "更新前無法線上遊玩",
     "installed": "Azura {version} 已安裝。遊戲已就緒。"
   },
   "saves": {
@@ -634,6 +638,7 @@
   },
   "updateWindow": {
     "title": "正在更新",
+    "checking": "正在檢查更新",
     "notes": "{version} 新功能",
     "step": {
       "download": "下載",
@@ -643,6 +648,7 @@
       "game": "遊戲"
     },
     "doing": {
+      "check": "正在尋找新版本…",
       "download": "正在下載…",
       "verify": "正在檢查簽章…",
       "install": "正在安裝…",

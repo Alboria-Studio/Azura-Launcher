@@ -271,14 +271,18 @@
   },
   "update": {
     "available": "Mettre à jour vers {version}",
+    "ready": "Azura {version} est prête",
     "downloading": "Téléchargement de la mise à jour… {percent}",
     "failed": "Impossible d'installer la mise à jour. Réessayez plus tard.",
     "confirm": "Le launcher télécharge la version {version} et redémarre. Votre jeu, vos sauvegardes et vos réglages restent tels quels.",
     "confirmYes": "Mettre à jour et redémarrer",
-    "cancel": "Annuler",
+    "later": "Plus tard",
+    "laterNote": "Plus tard : tu peux continuer à jouer en solo et en coopération locale. Le jeu en ligne a besoin de la mise à jour, qui s'installera au prochain démarrage du launcher.",
     "closeGame": "Fermez le jeu pour mettre à jour le launcher",
     "waitingTitle": "Azura {version} est prête.",
-    "waitingGame": "Elle s'installe dès que vous fermez le jeu. D'ici là, vous ne pouvez pas jouer en ligne.",
+    "waitingGame": "On te le proposera quand tu fermeras le jeu. D'ici là, tu ne peux pas jouer en ligne.",
+    "offline": "Tant que tu n'as pas mis à jour, tu peux jouer en solo et en coopération locale, mais pas en ligne.",
+    "offlineShort": "Pas d'en ligne avant la mise à jour",
     "installed": "Azura {version} installée. Le jeu est prêt."
   },
   "saves": {
@@ -634,6 +638,7 @@
   },
   "updateWindow": {
     "title": "Mise à jour",
+    "checking": "Recherche de mises à jour",
     "notes": "Nouveautés de la {version}",
     "step": {
       "download": "Téléchargement",
@@ -643,6 +648,7 @@
       "game": "Jeu"
     },
     "doing": {
+      "check": "Recherche d'une nouvelle version…",
       "download": "Téléchargement…",
       "verify": "Vérification de la signature…",
       "install": "Installation…",
