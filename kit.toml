@@ -8,10 +8,10 @@
 # against these hashes. `version` is the kit version: the launcher release the kit was built for,
 # with the attempt for a later kit of the same release (0.6.14-2); none for kits published before
 # kit versions existed.
-version = "0.6.14"
-revision = "ffb55cc"
+version = "0.6.14-2"
+revision = "bb70a03"
 
 [sha256]
-mac-arm64 = "bec8cb3da90d4db29e0b04c87fc295e789b2f264222e06f426642f0bb2a383d4"
-linux-amd64 = "e0037a7819b36104c2dd0d679a55c8e8d15c562e582652af141be3f5adedb549"
-win-amd64 = "61541e448d9aa7c066e65733d0d041d4c5a248e80fc19497eb59f0b403c47e1e"
+mac-arm64 = "d68321650aa9e00438cc188d70828992ee7bb274dabae262749613781da0befe"
+linux-amd64 = "e568d10cc4b3c0baacc8bff9078bf1b88ef581a162d5d554abf37499fab9d2db"
+win-amd64 = "51e0e56d48b6dc475683797b91f3f69bb673a5d1c92d659f5b33c02c62f4bd9d"
