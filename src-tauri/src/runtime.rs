@@ -83,6 +83,8 @@ pub enum LaunchError {
     SavesUnavailable(String),
     /// The operating system refused to start the process.
     StartFailed(String),
+    /// RAAM's Shadow is installed and its script patch could not be made (see `dlc.rs`).
+    DlcPatch(String),
 }
 
 /// Tracks whether a game started by this launcher is running. Shared with the threads that
@@ -110,15 +112,16 @@ pub struct LaunchFolders<'a> {
 }
 
 /// Command-line arguments that point the runtime at the saves and cache folders, and at the chosen
-/// graphics card (see `gpus.rs`).
-pub fn launch_arguments(folders: &LaunchFolders, gpu: &LaunchChoice) -> Vec<String> {
+/// graphics card (see `gpus.rs`). Fails when the downloadable content's patch is needed and cannot
+/// be made.
+pub fn launch_arguments(folders: &LaunchFolders, gpu: &LaunchChoice) -> Result<Vec<String>, LaunchError> {
     let mut args = folder_arguments(folders);
-    // RAAM's Shadow, when it is installed and can be played (see dlc.rs).
-    args.extend(crate::dlc::launch_arguments(folders.runtime, folders.game, folders.saves));
+    // The installed packages' script patch, and RAAM's Shadow when it can be played (see dlc.rs).
+    args.extend(crate::dlc::launch_arguments(folders.runtime, folders.game, folders.saves).map_err(LaunchError::DlcPatch)?);
     if let Some(uuid) = &gpu.device_uuid {
         args.push(format!("--vulkan_device_uuid={uuid}"));
     }
-    args
+    Ok(args)
 }
 
 /// Command-line arguments that point the runtime at the saves and cache folders.
@@ -316,7 +319,13 @@ impl GameProcess {
             return Err(LaunchError::AlreadyRunning);
         }
 
-        let mut args = launch_arguments(folders, gpu);
+        let mut args = match launch_arguments(folders, gpu) {
+            Ok(args) => args,
+            Err(error) => {
+                self.running.store(false, Ordering::SeqCst);
+                return Err(error);
+            }
+        };
         args.extend(extra.iter().map(|arg| arg.to_string()));
         let prime_offload = gpu.prime_offload;
         let runtime_dir = runtime_dir.to_path_buf();
@@ -364,14 +373,14 @@ mod tests {
             chosen_missing: false,
         };
         assert_eq!(
-            launch_arguments(&folders, &chosen),
+            launch_arguments(&folders, &chosen).unwrap(),
             [
                 "--user_data_root=/saves",
                 "--cache_root=/cache",
                 "--vulkan_device_uuid=0123456789abcdef0123456789abcdef"
             ]
         );
-        assert_eq!(launch_arguments(&folders, &automatic_gpu()), folder_arguments(&folders));
+        assert_eq!(launch_arguments(&folders, &automatic_gpu()).unwrap(), folder_arguments(&folders));
     }
 
     #[test]
@@ -523,6 +532,10 @@ mod tests {
         assert_eq!(
             json(LaunchError::StartFailed("denied".into())),
             r#"{"kind":"startFailed","detail":"denied"}"#
+        );
+        assert_eq!(
+            json(LaunchError::DlcPatch("no answer".into())),
+            r#"{"kind":"dlcPatch","detail":"no answer"}"#
         );
     }
 }

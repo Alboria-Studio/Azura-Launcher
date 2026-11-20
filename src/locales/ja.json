@@ -136,6 +136,7 @@
       "notInstalled": "未インストール",
       "needsRuntime": "インストール済み · ランタイム更新後に準備されます",
       "unsupported": "インストール済みですが、このゲームファイルでは準備できませんでした",
+      "unsupportedDetail": "インストール済みですが、準備できませんでした: {detail}",
       "installed": "インストール済み · マップはマルチプレイヤー対応時に追加",
       "installing": "インストール中… (1分ほどかかります)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "システムがゲームを停止しました。",
     "runtimeMissing": "ランタイムのビルドが見つかりません。scripts/build.sh でビルドしてから再度お試しください。",
     "alreadyRunning": "ゲームはすでに実行中です。",
+    "dlcPatch": "ダウンロードコンテンツを準備できなかったため、ゲームを起動しませんでした: {detail}",
     "startFailed": "ゲームを起動できませんでした：{detail}",
     "installingRuntime": "ゲームランタイムをインストールしています…",
     "installFailed": "ランタイムのインストールに失敗しました: {detail}",

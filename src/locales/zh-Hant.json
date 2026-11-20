@@ -136,6 +136,7 @@
       "notInstalled": "未安裝",
       "needsRuntime": "已安裝 · 更新執行環境後即可使用",
       "unsupported": "已安裝，但無法以這些遊戲檔案準備",
+      "unsupportedDetail": "已安裝，但無法準備：{detail}",
       "installed": "已安裝 · 地圖將隨多人模式推出",
       "installing": "安裝中…（約需一分鐘）"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "系統已停止遊戲。",
     "runtimeMissing": "找不到執行環境組建。請使用 scripts/build.sh 組建後再試一次。",
     "alreadyRunning": "遊戲已在執行中。",
+    "dlcPatch": "無法準備下載內容，因此未啟動遊戲：{detail}",
     "startFailed": "無法啟動遊戲：{detail}",
     "installingRuntime": "正在安裝遊戲執行環境…",
     "installFailed": "執行環境安裝失敗：{detail}",

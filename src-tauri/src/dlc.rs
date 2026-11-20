@@ -99,6 +99,9 @@ pub enum DlcStatus {
 pub struct DlcEntry {
     pub id: &'static str,
     pub status: DlcStatus,
+    /// Why the patch could not be made, for an `Unsupported` entry whose patch failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 /// The downloadable content installed in the saves folder.
@@ -285,9 +288,9 @@ fn run_tool(runtime: &Path, arguments: &[String], timeout: Duration) -> Result<T
         .spawn()
         .map_err(|e| format!("cannot run {}: {e}", executable.display()))?;
     let deadline = Instant::now() + timeout;
-    loop {
-        if child.try_wait().map_err(|e| e.to_string())?.is_some() {
-            break;
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            break status;
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
@@ -295,13 +298,14 @@ fn run_tool(runtime: &Path, arguments: &[String], timeout: Duration) -> Result<T
             return Err("the runtime did not finish".into());
         }
         std::thread::sleep(Duration::from_millis(100));
-    }
+    };
     let mut stdout = String::new();
     if let Some(mut pipe) = child.stdout.take() {
         let _ = pipe.read_to_string(&mut stdout);
     }
     let line = stdout.lines().rev().find(|line| line.starts_with('{')).unwrap_or("");
-    serde_json::from_str(line).map_err(|_| "the runtime gave no answer".to_string())
+    // A runtime that ends without its answer (a crash) is told apart by how it ended.
+    serde_json::from_str(line).map_err(|_| format!("the runtime ended without an answer ({status})"))
 }
 
 /// Makes the script patch the packages installed in `saves` need, for `game`, in the runtime
@@ -344,11 +348,19 @@ pub fn prepare_patch(runtime: &Path, game: &Path, saves: &Path) -> Result<PatchK
 pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current: bool) -> DlcState {
     let packages = installed_packages(saves);
     let raams_package = raams_shadow(saves);
+    let mut raams_detail = None;
     let raams_status = match (&raams_package, game) {
         (None, _) => DlcStatus::NotInstalled,
         (Some(_), _) if !runtime_current => DlcStatus::NeedsRuntime,
-        (Some(_), Some(game)) if prepare_patch(runtime, game, saves) == Ok(PatchKind::RaamsShadow) => DlcStatus::Ready,
-        (Some(_), _) => DlcStatus::Unsupported,
+        (Some(_), Some(game)) => match prepare_patch(runtime, game, saves) {
+            Ok(PatchKind::RaamsShadow) => DlcStatus::Ready,
+            Ok(_) => DlcStatus::Unsupported,
+            Err(error) => {
+                raams_detail = Some(error);
+                DlcStatus::Unsupported
+            }
+        },
+        (Some(_), None) => DlcStatus::Unsupported,
     };
     let pack_folders: Vec<(&str, PathBuf)> =
         MAP_PACKS.iter().filter_map(|&(id, _)| pack_folder(saves, id).map(|folder| (id, folder))).collect();
@@ -356,6 +368,7 @@ pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current:
         .iter()
         .map(|&id| DlcEntry {
             id,
+            detail: if id == "raamsShadow" { raams_detail.clone() } else { None },
             status: if id == "raamsShadow" {
                 raams_status
             } else if pack_folders.iter().any(|(pack, _)| *pack == id) {
@@ -379,19 +392,32 @@ pub fn state(runtime: &Path, game: Option<&Path>, saves: &Path, runtime_current:
 
 /// Arguments that start the game with the script patch the installed packages need: the patch as the
 /// update volume, and with RAAM's Shadow the campaign menu's DLC option. None when no package needs
-/// one or it cannot be made. Makes the patch first when needed.
-pub fn launch_arguments(runtime: &Path, game: Option<&Path>, saves: &Path) -> Vec<String> {
+/// one. Makes the patch first when needed.
+///
+/// A patch that cannot be made is an error when RAAM's Shadow is installed: the add-on's packages
+/// need it to load, so the game would not start without it. With map packs alone the game starts
+/// without it (their multiplayer characters then play as the first character), and the error is
+/// only logged.
+pub fn launch_arguments(runtime: &Path, game: Option<&Path>, saves: &Path) -> Result<Vec<String>, String> {
     let Some(game) = game else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     if installed_packages(saves).is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     let update = format!("--update_data_root={}", runtime.join(SCRIPT_PATCH).display());
     match prepare_patch(runtime, game, saves) {
-        Ok(PatchKind::RaamsShadow) if raams_shadow(saves).is_some() => vec![update, "--dlc_campaign=true".into()],
-        Ok(PatchKind::Characters) => vec![update],
-        _ => Vec::new(),
+        Ok(PatchKind::RaamsShadow) if raams_shadow(saves).is_some() => Ok(vec![update, "--dlc_campaign=true".into()]),
+        Ok(PatchKind::Characters) => Ok(vec![update]),
+        Ok(_) => Ok(Vec::new()),
+        Err(error) if raams_shadow(saves).is_some() => {
+            log::warn!("The downloadable content's script patch could not be made: {error}");
+            Err(error)
+        }
+        Err(error) => {
+            log::warn!("The map packs' script patch could not be made, starting without it: {error}");
+            Ok(Vec::new())
+        }
     }
 }
 
@@ -644,18 +670,23 @@ mod tests {
             kind: Some(PatchKind::RaamsShadow),
         };
         fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&other).unwrap()).unwrap();
-        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        // RAAM's Shadow without its patch: the reason comes back, instead of a game that cannot start.
+        let error = launch_arguments(&runtime, Some(&game), &saves).unwrap_err();
+        assert!(error.starts_with("cannot run "), "{error}");
+        let listed = state(&runtime, Some(&game), &saves, true);
+        assert_eq!(listed.entries[0].status, DlcStatus::Unsupported);
+        assert_eq!(listed.entries[0].detail.as_deref(), Some(error.as_str()));
         fs::create_dir_all(folder.join("GearGame/Patches")).unwrap();
         fs::write(folder.join(PATCH_FILE), b"patch").unwrap();
         let made = PatchManifest { kind: Some(PatchKind::RaamsShadow), ..expected };
         fs::write(folder.join(PATCH_MANIFEST), serde_json::to_string(&made).unwrap()).unwrap();
-        let args = launch_arguments(&runtime, Some(&game), &saves);
+        let args = launch_arguments(&runtime, Some(&game), &saves).unwrap();
         assert_eq!(args.len(), 2);
         assert!(args[0].starts_with("--update_data_root="));
         assert_eq!(args[1], "--dlc_campaign=true");
         let listed = state(&runtime, Some(&game), &saves, true);
         assert!(listed.raams_shadow_playable);
-        assert_eq!(listed.entries[0], DlcEntry { id: "raamsShadow", status: DlcStatus::Ready });
+        assert_eq!(listed.entries[0], DlcEntry { id: "raamsShadow", status: DlcStatus::Ready, detail: None });
         assert!(listed.entries[1..].iter().all(|entry| entry.status == DlcStatus::NotInstalled));
         assert_eq!(listed.other_packages, 0);
         // An older runtime is not asked to make the patch.
@@ -663,7 +694,7 @@ mod tests {
         // Another package installed: the patch must be made again (for its multiplayer characters),
         // which this runtime cannot do.
         fs::create_dir_all(content_dir(&saves).join("Q")).unwrap();
-        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        assert!(launch_arguments(&runtime, Some(&game), &saves).is_err());
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -687,20 +718,20 @@ mod tests {
         };
         // The character enums alone: the update volume, without the campaign menu's DLC option.
         write(Some(PatchKind::Characters));
-        let args = launch_arguments(&runtime, Some(&game), &saves);
+        let args = launch_arguments(&runtime, Some(&game), &saves).unwrap();
         assert_eq!(args, [format!("--update_data_root={}", folder.display())]);
         assert_eq!(state(&runtime, Some(&game), &saves, true).entries[0].status, DlcStatus::NotInstalled);
         // No package needs a patch: nothing to start, with or without a patch file left.
         write(Some(PatchKind::None));
-        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        assert!(launch_arguments(&runtime, Some(&game), &saves).unwrap().is_empty());
         fs::remove_file(folder.join(PATCH_FILE)).unwrap();
         assert_eq!(ready_patch(&runtime, &expected), Some(PatchKind::None));
         // A manifest from before the kinds is made again, which this runtime cannot do.
         write(None);
-        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        assert!(launch_arguments(&runtime, Some(&game), &saves).unwrap().is_empty());
         // Nothing installed: no patch is asked for.
         fs::remove_dir_all(content_dir(&saves)).unwrap();
-        assert!(launch_arguments(&runtime, Some(&game), &saves).is_empty());
+        assert!(launch_arguments(&runtime, Some(&game), &saves).unwrap().is_empty());
         let _ = fs::remove_dir_all(&root);
     }
 

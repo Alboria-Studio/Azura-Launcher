@@ -202,7 +202,7 @@ const SIMULATED_OUTPUT = [
 
 /**
  * Starts the game. Rejects with { kind, detail } when it cannot start (see runtime.rs:
- * "runtimeMissing", "alreadyRunning", "startFailed"). Its output, restarts and end arrive
+ * "runtimeMissing", "alreadyRunning", "savesUnavailable", "startFailed", "dlcPatch"). Its output, restarts and end arrive
  * through onGameOutput, onGameRestart and onGameExit. With `offline` (a newer launcher is pending)
  * the game plays in system link instead of online (lib.rs launch_args).
  */

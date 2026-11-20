@@ -6,6 +6,21 @@ it as the update's notes (`scripts/release-common.sh`). Bumping the version adds
 release without one fails. One list item (`- `) per change, in English; an item may continue on
 indented lines.
 
+## 0.6.15
+
+- Fenix Rising's and Forces of Nature's achievements that are earned in Horde and Beast can now be
+  earned: every Horde wave on one of a pack's maps, Beast on all of a pack's maps, 20 Horde waves
+  in a row without going down on a Forces of Nature map, the Cleaver as a hidden weapon, every
+  fortification at its top level, every combat ribbon, and what you spend as the Baird worker.
+  Waves you complete count across matches.
+- When the downloadable content cannot be prepared for the game, Play says why instead of starting
+  a game that cannot load it, and Installation shows the reason next to RAAM's Shadow. With map
+  packs alone the game still starts.
+- Online Horde and Beast from the lobby no longer list a bot nobody added on the scoreboard.
+- On Windows with Visual Studio 2026, the launcher finds a compiler its C++ library accepts (the
+  newest clang installed, Visual Studio's own included), and says which version is too old when
+  none is.
+
 ## 0.6.14
 
 - The launcher looks for updates before it opens, as Steam and Discord do: a small window says it

@@ -136,6 +136,7 @@
       "notInstalled": "Not installed",
       "needsRuntime": "Installed · ready once the runtime is updated",
       "unsupported": "Installed, but it could not be prepared with these game files",
+      "unsupportedDetail": "Installed, but it could not be prepared: {detail}",
       "installed": "Installed · its maps come with multiplayer",
       "installing": "Installing… (it takes a minute)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "The game was stopped by the system.",
     "runtimeMissing": "No runtime build found. Build it with scripts/build.sh and try again.",
     "alreadyRunning": "The game is already running.",
+    "dlcPatch": "The downloadable content could not be prepared, so the game was not started: {detail}",
     "startFailed": "The game could not start: {detail}",
     "installingRuntime": "Installing the game runtime…",
     "installFailed": "Installing the runtime failed: {detail}",
