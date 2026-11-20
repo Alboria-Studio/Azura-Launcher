@@ -136,6 +136,7 @@
       "notInstalled": "Non installé",
       "needsRuntime": "Installé · prêt après la mise à jour du runtime",
       "unsupported": "Installé, mais n'a pas pu être préparé avec ces fichiers du jeu",
+      "unsupportedDetail": "Installé, mais n'a pas pu être préparé : {detail}",
       "installed": "Installé · ses cartes arrivent avec le multijoueur",
       "installing": "Installation… (une minute)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "Le système a arrêté le jeu.",
     "runtimeMissing": "Aucune compilation du runtime trouvée. Compilez-le avec scripts/build.sh puis réessayez.",
     "alreadyRunning": "Le jeu est déjà en cours d'exécution.",
+    "dlcPatch": "Le contenu téléchargeable n'a pas pu être préparé, le jeu n'a donc pas été lancé : {detail}",
     "startFailed": "Impossible de lancer le jeu : {detail}",
     "installingRuntime": "Installation du runtime du jeu…",
     "installFailed": "Échec de l'installation du runtime : {detail}",

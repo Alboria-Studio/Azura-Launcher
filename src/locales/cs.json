@@ -136,6 +136,7 @@
       "notInstalled": "Nenainstalováno",
       "needsRuntime": "Nainstalováno · připraví se po aktualizaci runtime",
       "unsupported": "Nainstalováno, ale s těmito soubory hry se ho nepodařilo připravit",
+      "unsupportedDetail": "Nainstalováno, ale nepodařilo se ho připravit: {detail}",
       "installed": "Nainstalováno · jeho mapy přijdou s multiplayerem",
       "installing": "Instalace… (trvá minutu)"
     },
@@ -237,6 +238,7 @@
     "exitSignal": "Systém hru zastavil.",
     "runtimeMissing": "Sestavení běhového prostředí nenalezeno. Sestavte ho pomocí scripts/build.sh a zkuste to znovu.",
     "alreadyRunning": "Hra už běží.",
+    "dlcPatch": "Stahovatelný obsah se nepodařilo připravit, a proto se hra nespustila: {detail}",
     "startFailed": "Hru se nepodařilo spustit: {detail}",
     "installingRuntime": "Instaluje se běhové prostředí hry…",
     "installFailed": "Instalace běhového prostředí selhala: {detail}",
