@@ -318,8 +318,9 @@ Releases are published to Alboria's download host, `updates.alboria.org`: a Clou
 endpoint in `tauri.conf.json`). Each version's files go under `launcher-v<version>/`, the newest
 installers again under `latest/` with fixed names (the website's download links), and `latest.json`
 under `launcher-updates/`. Launchers older than 0.6.9 read `latest.json` from the release
-`launcher-updates` of the GitHub repository `Carolux97/azura-releases`, which keeps only that file
-(no downloads, it points at `updates.alboria.org`); the release workflow updates it too.
+`launcher-updates` of the GitHub repository `Alboria-Studio/azura-releases` (they ask for it at its
+former address, `Carolux97/azura-releases`, which GitHub redirects), which keeps only that file (no
+downloads, it points at `updates.alboria.org`); the release workflow updates it too.
 
 ### How a release happens
 
@@ -364,7 +365,7 @@ The workflow needs five repository secrets:
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: its password;
 - `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`: an R2 API token (Cloudflare, R2, Manage API
   tokens) with Object Read & Write on the bucket `azura-updates` only;
-- `RELEASES_TOKEN`: a fine-grained personal access token with access to `Carolux97/azura-releases`
+- `RELEASES_TOKEN`: a fine-grained personal access token with access to `Alboria-Studio/azura-releases`
   only and Contents set to read and write, for the legacy copy of `latest.json`.
 
 ### macOS without an Apple Developer ID

@@ -4,7 +4,7 @@
 #
 # GitHub's hosted macOS arm64 machines are sometimes short ("capacity constraints"): a job then
 # waits in the queue and is cancelled after about 15 minutes without having started. The macOS jobs
-# of this repository's Release workflow and of Carolux97/Azura's Runtime kit workflow (which Publish
+# of this repository's Release workflow and of Alboria-Studio/Azura's Runtime kit workflow (which Publish
 # kit runs) take their machine from the repository variable MAC_RUNNER, and ask GitHub for
 # macos-latest while it is unset. Given the stuck run, this script:
 #   1. sets MAC_RUNNER to azura-mac in the run's repository;
@@ -28,7 +28,7 @@
 #
 # Usage:
 #   scripts/mac-runner.sh <run URL>             as GitHub shows it, e.g.
-#                                               https://github.com/Carolux97/Azura/actions/runs/123
+#                                               https://github.com/Alboria-Studio/Azura/actions/runs/123
 #   scripts/mac-runner.sh <owner/repo> <run id>
 #
 # Needs gh signed in with access to the repository's variables, runs and runners.
