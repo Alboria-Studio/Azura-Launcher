@@ -13,6 +13,10 @@ indented lines.
   in a row without going down on a Forces of Nature map, the Cleaver as a hidden weapon, every
   fortification at its top level, every combat ribbon, and what you spend as the Baird worker.
   Waves you complete count across matches.
+- When the downloadable content cannot be prepared for the game, Play says why instead of starting
+  a game that cannot load it, and Installation shows the reason next to RAAM's Shadow. With map
+  packs alone the game still starts.
+- Online Horde and Beast from the lobby no longer list a bot nobody added on the scoreboard.
 - On Windows with Visual Studio 2026, the launcher finds a compiler its C++ library accepts (the
   newest clang installed, Visual Studio's own included), and says which version is too old when
   none is.
