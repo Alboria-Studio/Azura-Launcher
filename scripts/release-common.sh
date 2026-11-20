@@ -7,8 +7,9 @@
 # download links), and the updater's latest.json under launcher-updates/. The updater endpoint in
 # src-tauri/tauri.conf.json points at that latest.json; change both together.
 #
-# Launchers older than 0.6.9 read latest.json from the GitHub repository Carolux97/azura-releases,
-# which keeps only that file (no downloads), pointing at updates.alboria.org.
+# Launchers older than 0.6.9 read latest.json from the GitHub repository Alboria-Studio/azura-releases
+# (they ask for it at its former address, Carolux97/azura-releases, which GitHub redirects), which
+# keeps only that file (no downloads), pointing at updates.alboria.org.
 
 readonly DOWNLOADS_URL="https://updates.alboria.org"
 readonly R2_BUCKET="azura-updates"
@@ -19,7 +20,7 @@ readonly R2_ENDPOINT="https://6055806f7858e57c2d2e0cf2ebd30105.r2.cloudflarestor
 
 # The GitHub repository whose release "launcher-updates" still holds latest.json for launchers
 # older than 0.6.9, and the folder (on R2) and release (on GitHub) of the updater's latest.json.
-readonly LEGACY_RELEASES_REPO="Carolux97/azura-releases"
+readonly LEGACY_RELEASES_REPO="Alboria-Studio/azura-releases"
 readonly UPDATES_TAG="launcher-updates"
 
 # Prints a JSON field of a file with Node, which the launcher already requires.

@@ -16,7 +16,7 @@
 # from the runtime's main. By hand without it, a release that already has a kit gets its latest one
 # pinned again (when its pin failed, or kit.toml was changed since).
 #
-# Secret: AZURA_RELEASE_TOKEN, a fine-grained token that can run workflows of Carolux97/Azura
+# Secret: AZURA_RELEASE_TOKEN, a fine-grained token that can run workflows of Alboria-Studio/Azura
 # (Actions: read and write) and push to this repository (Contents: read and write). The push uses
 # it rather than the run's own token so the release's pull request runs its checks again.
 
@@ -90,8 +90,8 @@ jobs:
             exit 0
           fi
           echo "published=false" >> "${GITHUB_OUTPUT}"
-          gh workflow run publish-kit.yml -R Carolux97/Azura --ref main -f "launcher_version=${version}"
-          echo "Asked Carolux97/Azura for a kit of ${version}; it is pinned here when Publish kit is done." | tee -a "${GITHUB_STEP_SUMMARY}"
+          gh workflow run publish-kit.yml -R Alboria-Studio/Azura --ref main -f "launcher_version=${version}"
+          echo "Asked Alboria-Studio/Azura for a kit of ${version}; it is pinned here when Publish kit is done." | tee -a "${GITHUB_STEP_SUMMARY}"
 
   # From Publish kit's event, or by hand for a version already published: pins the published kit
   # on the release branch.
