@@ -20,6 +20,10 @@
 //! - Windows: LLVM's clang, with Microsoft's C++ headers and libraries from Visual Studio's Build
 //!   Tools (clang finds them by itself), both through `winget` in a console window of its own,
 //!   where the player accepts the packages' agreements and Windows asks for permission to install.
+//!   clang uses the headers of the newest Visual Studio installed, and each Visual Studio's C++
+//!   library refuses clang versions older than the one it is made for (Visual Studio 2026 needs
+//!   clang 22). So the clang each Visual Studio ships is a candidate too, and a clang too old for
+//!   the library is reported as such.
 //!
 //! The manual command for the player's system is always offered as well.
 
@@ -164,7 +168,9 @@ pub fn manual_command(install: &InstallMethod, release: Option<&OsRelease>) -> S
             // the C++ standard library), which SteamOS' image leaves out.
             Some(release) if release.id == "steamos" => STEAMOS_MANUAL.into(),
             Some(_) => "rpm-ostree install clang gcc-c++  (then restart)".into(),
-            None if cfg!(windows) => "Install LLVM (clang 18 or newer) and Visual Studio 2022 Build Tools with the C++ workload".into(),
+            // Visual Studio's C++ library sets the oldest clang it accepts (22 for Visual Studio
+            // 2026), so the latest LLVM is asked for rather than a version.
+            None if cfg!(windows) => "Install the latest LLVM and Visual Studio 2022 Build Tools with the C++ workload".into(),
             None => "Install clang 18 or newer with your distribution's package manager".into(),
         },
     }
@@ -214,6 +220,40 @@ fn llvm_install_dirs() -> Vec<std::path::PathBuf> {
         .iter()
         .filter_map(std::env::var_os)
         .map(|dir| std::path::PathBuf::from(dir).join("LLVM").join("bin"))
+        .collect()
+}
+
+/// Where each Visual Studio installed here (Build Tools included) keeps the clang it ships with
+/// its "C++ Clang tools" component. That clang is the version Visual Studio's own C++ library is
+/// made for, so it works with the newest Visual Studio even when the LLVM installed on its own is
+/// older than that library accepts. `vswhere`, Visual Studio's installer tool, lists the
+/// installations; it is always in this folder when one exists.
+#[cfg(windows)]
+fn visual_studio_clang_dirs() -> Vec<std::path::PathBuf> {
+    let Some(program_files) = std::env::var_os("ProgramFiles(x86)") else {
+        return Vec::new();
+    };
+    let vswhere = std::path::PathBuf::from(program_files).join("Microsoft Visual Studio").join("Installer").join("vswhere.exe");
+    if !vswhere.is_file() {
+        return Vec::new();
+    }
+    let command = vec![vswhere.to_string_lossy().into_owned()];
+    let Some(output) = run(&command, &["-products", "*", "-utf8", "-property", "installationPath"]) else {
+        return Vec::new();
+    };
+    let arch = if cfg!(target_arch = "aarch64") { "ARM64" } else { "x64" };
+    visual_studio_clang_dirs_in(&output, arch)
+}
+
+/// The clang folders of the Visual Studio installations `vswhere_output` lists (one installation
+/// folder per line), for the `arch` folder name ("x64" or "ARM64").
+#[cfg_attr(not(windows), allow(dead_code))]
+fn visual_studio_clang_dirs_in(vswhere_output: &str, arch: &str) -> Vec<std::path::PathBuf> {
+    vswhere_output
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(|install| Path::new(install).join("VC").join("Tools").join("Llvm").join(arch).join("bin"))
         .collect()
 }
 
@@ -267,8 +307,28 @@ fn probe(compiler: &[String]) -> Result<(), String> {
     if result.status.success() {
         Ok(())
     } else {
-        Err(String::from_utf8_lossy(&result.stderr).lines().take(3).collect::<Vec<_>>().join(" "))
+        Err(error_summary(&String::from_utf8_lossy(&result.stderr)))
     }
+}
+
+/// The part of a failed compile's output that says what went wrong: its first error lines, up to
+/// three. A header's error comes after one "In file included from" line per header that included
+/// it, so the first lines alone would not name it. Falls back to the first three lines when no
+/// line is marked as an error.
+fn error_summary(stderr: &str) -> String {
+    let lines: Vec<&str> = stderr.lines().map(str::trim).filter(|line| !line.is_empty()).collect();
+    let errors: Vec<&str> = lines.iter().copied().filter(|line| line.contains("error:")).take(3).collect();
+    if errors.is_empty() { lines.into_iter().take(3).collect::<Vec<_>>() } else { errors }.join(" ")
+}
+
+/// The oldest clang major version Microsoft's C++ standard library accepts, when `error` is the
+/// error it stops with on an older one (STL1000, "Unexpected compiler version, expected Clang 22
+/// or newer."). Each Visual Studio release can raise it, and clang uses the headers of the newest
+/// Visual Studio installed, so installing a new Visual Studio can make an older clang stop working.
+pub fn stl_clang_floor(error: &str) -> Option<u32> {
+    let rest = error.split("STL1000").nth(1)?.split("expected Clang ").nth(1)?;
+    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+    digits.parse().ok()
 }
 
 /// Apple's compiler, if the Command Line Tools (or Xcode) are installed. Never opens Apple's
@@ -284,28 +344,42 @@ fn find_compiler() -> Option<Compiler> {
     Some(Compiler { command, version, major })
 }
 
-/// The newest clang++ on the PATH (clang++, or a versioned clang++-N as Debian names them; on
-/// Windows clang++.exe, also where LLVM installs it).
+/// The newest clang++ on this machine: on the PATH (clang++, or a versioned clang++-N as Debian
+/// names them), and on Windows also where LLVM installs it and the one each Visual Studio ships.
+/// Every folder is looked at, not only the first that has a clang++, so that a newer clang in a
+/// later folder is not hidden by an older one earlier on the PATH.
 #[cfg(not(target_os = "macos"))]
 fn find_compiler() -> Option<Compiler> {
     #[allow(unused_mut)]
     let mut dirs: Vec<std::path::PathBuf> = std::env::split_paths(&std::env::var_os("PATH")?).collect();
     #[cfg(windows)]
-    dirs.extend(llvm_install_dirs());
+    {
+        dirs.extend(llvm_install_dirs());
+        dirs.extend(visual_studio_clang_dirs());
+    }
     let suffix = std::env::consts::EXE_SUFFIX;
     let mut names = vec![format!("clang++{suffix}")];
     names.extend((MIN_CLANG_MAJOR..=30).rev().map(|major| format!("clang++-{major}{suffix}")));
+    // The same program reached through two folders (a link, /bin and /usr/bin) is asked once.
+    let mut seen = std::collections::HashSet::new();
     let mut found: Vec<Compiler> = Vec::new();
-    for name in names {
-        let Some(program) = dirs.iter().map(|dir| dir.join(&name)).find(|file| file.is_file()) else {
+    for program in names.iter().flat_map(|name| dirs.iter().map(move |dir| dir.join(name))) {
+        if !program.is_file() || !seen.insert(program.canonicalize().unwrap_or_else(|_| program.clone())) {
             continue;
-        };
+        }
         let command = vec![program.to_string_lossy().into_owned()];
         if let Some((version, major)) = run(&command, &["--version"]).as_deref().and_then(parse_version) {
             found.push(Compiler { command, version, major });
         }
     }
-    found.into_iter().max_by_key(|compiler| compiler.major)
+    newest(found)
+}
+
+/// The compiler with the highest major version; of several with the same one, the first found
+/// (the PATH's order).
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+fn newest(found: Vec<Compiler>) -> Option<Compiler> {
+    found.into_iter().rev().max_by_key(|compiler| compiler.major)
 }
 
 /// How to install the compiler here.
@@ -358,12 +432,17 @@ pub fn compiler() -> Option<Compiler> {
 
 /// What a compiler that is there means: its version when it can build the runtime, otherwise
 /// the problem. `probe` compiles and links the test program with it; it only runs for a compiler
-/// new enough, since an old one is reported as such either way.
+/// new enough, since an old one is reported as such either way. A probe stopped by Microsoft's C++
+/// library because the compiler is older than it accepts is reported the same way, with the
+/// version that library needs.
 fn judge(compiler: &Compiler, minimum: u32, probe: impl Fn(&[String]) -> Result<(), String>) -> Result<String, String> {
     if compiler.major < minimum {
         return Err(format!("{} is older than clang {}", compiler.version, minimum));
     }
-    probe(&compiler.command)?;
+    probe(&compiler.command).map_err(|error| match stl_clang_floor(&error) {
+        Some(floor) => format!("{} is older than clang {floor}, the oldest Visual Studio's C++ library accepts", compiler.version),
+        None => error,
+    })?;
     Ok(compiler.version.clone())
 }
 
@@ -510,6 +589,60 @@ mod tests {
         let result = judge(&clang(20), MIN_CLANG_MAJOR, |_| Err("fatal error: 'atomic' file not found".into()));
         assert_eq!(result, Err("fatal error: 'atomic' file not found".into()));
         assert_eq!(judge(&clang(20), MIN_CLANG_MAJOR, |_| Ok(())), Ok("clang 20.1.0".into()));
+    }
+
+    /// What clang 20 printed compiling the probe against Visual Studio 2026's headers (MSVC
+    /// 14.52), shortened.
+    const STL_TOO_NEW: &str = "In file included from <stdin>:1:\n\
+        In file included from C:\\VS\\18\\VC\\Tools\\MSVC\\14.52.37025\\include\\atomic:8:\n\
+        In file included from C:\\VS\\18\\VC\\Tools\\MSVC\\14.52.37025\\include\\yvals.h:13:\n\
+        C:\\VS\\18\\VC\\Tools\\MSVC\\14.52.37025\\include\\yvals_core.h:919:1: error: static assertion failed: \
+        error STL1000: Unexpected compiler version, expected Clang 22 or newer.\n\
+          919 | _EMIT_STL_ERROR(STL1000, \"Unexpected compiler version, expected Clang 22 or newer.\");\n\
+        1 error generated.\n";
+
+    #[test]
+    fn a_failed_probe_reports_its_error_lines_not_the_include_chain() {
+        let summary = error_summary(STL_TOO_NEW);
+        assert!(summary.contains("error STL1000"), "{summary}");
+        assert!(!summary.contains("In file included from"), "{summary}");
+        // Output with no line marked as an error keeps its first lines.
+        assert_eq!(error_summary("one\n\ntwo\nthree\nfour\n"), "one two three");
+    }
+
+    #[test]
+    fn reads_the_clang_version_microsofts_library_needs() {
+        assert_eq!(stl_clang_floor(&error_summary(STL_TOO_NEW)), Some(22));
+        assert_eq!(stl_clang_floor("fatal error: 'atomic' file not found"), None);
+        // Another of the library's version errors (CUDA) is not about clang.
+        assert_eq!(stl_clang_floor("error STL1002: Unexpected compiler version, expected CUDA 13.5 or newer."), None);
+    }
+
+    #[test]
+    fn a_clang_too_old_for_microsofts_library_is_reported_as_such() {
+        let result = judge(&clang(20), MIN_CLANG_MAJOR, |_| Err(error_summary(STL_TOO_NEW)));
+        assert_eq!(result, Err("clang 20.1.0 is older than clang 22, the oldest Visual Studio's C++ library accepts".into()));
+    }
+
+    #[test]
+    fn the_clang_of_each_visual_studio_is_a_candidate() {
+        let dirs = visual_studio_clang_dirs_in(
+            "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\r\n\r\nC:\\BuildTools\r\n",
+            "x64",
+        );
+        let expected: Vec<std::path::PathBuf> = ["C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise", "C:\\BuildTools"]
+            .iter()
+            .map(|install| Path::new(install).join("VC").join("Tools").join("Llvm").join("x64").join("bin"))
+            .collect();
+        assert_eq!(dirs, expected);
+    }
+
+    #[test]
+    fn the_newest_compiler_wins_and_ties_keep_the_path_order() {
+        let at = |path: &str, major: u32| Compiler { command: vec![path.into()], ..clang(major) };
+        let found = vec![at("llvm", 20), at("vs2026", 22), at("vs2026-other", 22), at("vs2022", 19)];
+        assert_eq!(newest(found).map(|compiler| compiler.command), Some(vec!["vs2026".to_string()]));
+        assert_eq!(newest(Vec::new()), None);
     }
 
     #[test]
