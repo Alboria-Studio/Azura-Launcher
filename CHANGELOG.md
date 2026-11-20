@@ -21,6 +21,9 @@ indented lines.
   cannot be earned yet: that comes in a later version.
 - The multiplayer characters of Fenix Rising and Forces of Nature, such as Recruit Clayton Carmine,
   play as themselves instead of as Marcus, with or without RAAM's Shadow installed.
+- With Steam Input on Linux, controllers Steam handles work in the game: the game uses Steam's own
+  controller when Steam hides the real one. If the system does not let the game read a controller,
+  the game now says so and how to fix it.
 
 ## 0.6.13
 
