@@ -397,8 +397,8 @@ with a DEV band, generated the same way into `src-tauri/icons/dev`.
 
 ## License
 
-Source-available under the [PolyForm Strict License 1.0.0](LICENSE). Copyright 2026 Carolina Molina
-Elvira and Juan Llorca Martínez. The names and artwork are reserved ([TRADEMARKS.md](TRADEMARKS.md));
+Source-available under the [PolyForm Strict License 1.0.0](LICENSE). Copyright 2026
+Alboria. The names and artwork are reserved ([TRADEMARKS.md](TRADEMARKS.md));
 third-party code keeps its own licenses ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). Gears of
 War is a trademark of Microsoft; this project is not affiliated with or endorsed by Microsoft, Epic
 Games or The Coalition.

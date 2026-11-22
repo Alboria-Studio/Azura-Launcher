@@ -19,7 +19,7 @@ The launcher's fonts ship with their SIL Open Font License texts in `src/fonts/l
 
 Every published launcher bundles the player kit of its platform (`kit/` in its resources): what the
 launcher needs to build the game on the player's machine. The kit is not part of this repository.
-It is proprietary software of Carolina Molina Elvira and Juan Llorca Martínez, built from the
+It is proprietary software of Alboria, built from the
 private Azura runtime, and carries its own `LICENSE` and `THIRD_PARTY_NOTICES.md` with the licenses
 of the third-party code in it (the ReXGlue SDK and the libraries it bundles).
 

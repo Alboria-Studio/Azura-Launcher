@@ -1274,7 +1274,7 @@ mod tests {
     const SECRETS: &[&str] = &[
         "marisol", "Marisol", "mvega", "NightHawk77", "Gears of War 3 (Spain)", "Games Saves",
         "MacBook", "192.168.1.37", "83.44.120.9", "fe80::1c2b:3aff:fe4d:5e6f", "2a01:4f8:c0c:1234::1",
-        "a4:83:e7:12:9b:0c", "4DTZ-VSTX", "Kabosu#117", "Ortega#1", "marisol.vega@icloud.com",
+        "a4:83:e7:12:9b:0c", "4DTZ-VSTX", "Cole#117", "Ortega#1", "marisol.vega@icloud.com",
         "dXNlcjpwYXNzd29yZDEyMzQ1Njc4OTBhYmNkZWY", "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "jorge", "C:\\Users\\Jorge", "/home/deck2", "/var/home/bazzite-user", "#4821",
     ];
@@ -1287,7 +1287,7 @@ mod tests {
 [info] System Link: interface 'en0' 192.168.1.37/24, default route
 [info] Alboria: signed in as NightHawk77#4821 (session for 60 minutes)
 [info] Alboria: in room 4DTZ-VSTX as 83.44.120.9, hosting
-[info] Alboria: friend Kabosu#117 and Ortega#1 joined from fe80::1c2b:3aff:fe4d:5e6f%en0 and 2a01:4f8:c0c:1234::1
+[info] Alboria: friend Cole#117 and Ortega#1 joined from fe80::1c2b:3aff:fe4d:5e6f%en0 and 2a01:4f8:c0c:1234::1
 [info] MAC a4:83:e7:12:9b:0c on Marisols-MacBook-Pro.local (Marisols-MacBook-Pro)
 [info] mail marisol.vega@icloud.com, token dXNlcjpwYXNzd29yZDEyMzQ1Njc4OTBhYmNkZWY
 [info] key 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
