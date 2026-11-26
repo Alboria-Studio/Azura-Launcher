@@ -40,6 +40,7 @@ import { minutesUntil, noticeKey, serviceView } from "./alboriaService.js";
 import { setupFriends } from "./friendsPanel.js";
 import {
   alboriaServer,
+  devGameSound,
   alboriaStatus,
   checkForUpdate,
   endUpdateCheck,
@@ -55,6 +56,7 @@ import {
   isNativeApp,
   openNoticeLink,
   setAlboriaServer,
+  setDevGameSound,
   launchGame,
   prepareShaders,
   shaderStorageBytes,
@@ -1904,17 +1906,46 @@ const setupService = () => {
 };
 
 /**
- * Azura (DEV) only: Account › Development chooses the Alboria server (alboria_server in lib.rs).
- * Changing it starts the interface again, so everything about the account (the identity, the
- * service's state, the friends and their events channel) comes from the new server.
+ * Azura (DEV) only: the Development options window, from the button beside Play. Its sound option
+ * says whether the game starts with sound (dev_game_sound in lib.rs: off each time the launcher
+ * opens); the server option chooses the Alboria server (alboria_server in lib.rs). Changing the
+ * server starts the interface again, so everything about the account (the identity, the service's
+ * state, the friends and their events channel) comes from the new server. The published launcher
+ * keeps the button hidden.
  */
-const setupDevServer = async () => {
+const setupDevOptions = async () => {
   const server = await alboriaServer().catch(() => null);
   if (!server?.dev) return;
-  const panel = document.getElementById("dev-server-panel");
+  const dialog = document.getElementById("dev-options");
+  const open = document.getElementById("dev-options-open");
+  const close = () => {
+    dialog.hidden = true;
+    open.focus({ preventScroll: true });
+  };
+  open.hidden = false;
+  open.addEventListener("click", () => {
+    dialog.hidden = false;
+    document.getElementById("dev-game-sound").focus({ preventScroll: true });
+  });
+  document.getElementById("dev-options-close").addEventListener("click", close);
+  // Escape closes it too (a controller's Back presses its button, data-pad-back).
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !dialog.hidden) close();
+  });
+
+  const sound = document.getElementById("dev-game-sound");
+  sound.checked = await devGameSound().catch(() => false);
+  sound.addEventListener("change", async () => {
+    try {
+      sound.checked = await setDevGameSound(sound.checked);
+    } catch (error) {
+      sound.checked = !sound.checked;
+      toast(String(error));
+    }
+  });
+
   const choice = document.getElementById("dev-server-choice");
   const url = document.getElementById("dev-server-url");
-  panel.hidden = false;
   choice.value = server.choice;
   url.hidden = server.choice !== "other";
   if (server.choice === "other") url.value = server.url;
@@ -2365,7 +2396,7 @@ friends = setupFriends({
   formatWhen: formatDateTime,
 });
 friends.sync();
-setupDevServer();
+setupDevOptions();
 setupReleaseNotes();
 diagnostics = setupDiagnostics({ t, formatSize, gameOutput: shownGameOutput });
 // Running the runtime to list the cards takes a moment: the rest of the window is ready first.

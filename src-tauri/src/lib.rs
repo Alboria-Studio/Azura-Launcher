@@ -26,6 +26,7 @@ mod updater;
 mod versions;
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use achievements::AchievementsState;
 use alboria::{Alboria, AlboriaError, CodeSent, Identity, Session};
@@ -346,11 +347,11 @@ fn launch_args(join_code: Option<&str>, offline: bool) -> Result<Vec<String>, La
 fn play(app: tauri::AppHandle, process: &GameProcess, extra: &[&str]) -> Result<(), LaunchError> {
     // The development launcher sends the game to the Alboria it chose (dev_server); the published
     // one leaves the game on production, its default.
-    let api_url = format!("--alboria_api_url={}", app.state::<Alboria>().base());
-    let mut args: Vec<&str> = extra.to_vec();
+    let mut args: Vec<String> = extra.iter().map(|arg| arg.to_string()).collect();
     if cfg!(feature = "dev") {
-        args.push(&api_url);
+        args.extend(dev_launch_args(&app.state::<Alboria>().base(), DEV_GAME_SOUND.load(Ordering::Relaxed)));
     }
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
     start_runtime(app.clone(), process, &args)?;
     let minimize = settings_paths(&app).and_then(|paths| paths.load()).is_ok_and(|settings| settings.minimize_while_playing);
     if minimize {
@@ -359,6 +360,42 @@ fn play(app: tauri::AppHandle, process: &GameProcess, extra: &[&str]) -> Result<
         }
     }
     Ok(())
+}
+
+// --- The development launcher's options for the game -------------------------------------------
+
+/// Azura (DEV) only: whether the game starts with sound. Off each time the launcher opens, so test
+/// runs are silent unless the player turns it on; kept in memory only, never saved, so the next
+/// launcher starts muted again. The published launcher never reads it.
+static DEV_GAME_SOUND: AtomicBool = AtomicBool::new(false);
+
+/// The arguments Azura (DEV) adds to every start of the game: the Alboria server it chose and, with
+/// the sound off, `--audio_mute=true` (the runtime's mute, which silences the game and Alboria's
+/// sounds alike).
+fn dev_launch_args(api_url: &str, sound: bool) -> Vec<String> {
+    let mut args = vec![format!("--alboria_api_url={api_url}")];
+    if !sound {
+        args.push("--audio_mute=true".to_owned());
+    }
+    args
+}
+
+/// Whether the game starts with sound (Development options in Azura (DEV)); always off in the
+/// published launcher, which has no such option.
+#[tauri::command]
+fn dev_game_sound() -> bool {
+    cfg!(feature = "dev") && DEV_GAME_SOUND.load(Ordering::Relaxed)
+}
+
+/// Development launcher only: the game starts with sound (`on`) or muted from its next start until
+/// the launcher closes.
+#[tauri::command]
+fn dev_game_sound_set(on: bool) -> Result<bool, String> {
+    if !cfg!(feature = "dev") {
+        return Err("only the development launcher chooses the game's sound".into());
+    }
+    DEV_GAME_SOUND.store(on, Ordering::Relaxed);
+    Ok(on)
 }
 
 // --- The development launcher's Alboria server ------------------------------------------------
@@ -1271,7 +1308,9 @@ pub fn run() {
             alboria_events_start,
             alboria_events_stop,
             alboria_server,
-            alboria_server_set
+            alboria_server_set,
+            dev_game_sound,
+            dev_game_sound_set
         ])
         .setup(|app| {
             // The development launcher talks to the Alboria server it chose (Local by default).
@@ -1306,6 +1345,15 @@ pub fn run() {
 #[cfg(test)]
 mod notice_link_tests {
     use super::{alboria_blog_url, launch_args, notice_link_allowed, ALBORIA_DISCORD, room_code_valid, FRIENDS_PATHS};
+
+    #[test]
+    fn the_development_launcher_mutes_the_game_unless_sound_is_on() {
+        use super::dev_launch_args;
+        assert_eq!(dev_launch_args("http://127.0.0.1:8080", false), ["--alboria_api_url=http://127.0.0.1:8080", "--audio_mute=true"]);
+        assert_eq!(dev_launch_args("http://127.0.0.1:8080", true), ["--alboria_api_url=http://127.0.0.1:8080"]);
+        // Each launcher starts with the sound off.
+        assert!(!super::DEV_GAME_SOUND.load(std::sync::atomic::Ordering::Relaxed));
+    }
 
     #[test]
     fn the_development_launcher_chooses_its_server() {

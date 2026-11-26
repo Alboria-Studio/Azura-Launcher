@@ -594,7 +594,7 @@
     "cameOnline": "{name} 上線了"
   },
   "devServer": {
-    "title": "開發",
+    "title": "Alboria 伺服器",
     "help": "僅限 Azura (DEV)：它所連線的 Alboria 伺服器。本機是 alboria-server 中 `npm run local` 啟動的伺服器，讓測試帳號不會進入正式資料庫。變更後會重新登入：每個伺服器有自己的帳號。遊戲下次啟動時會使用同一個伺服器。",
     "local": "本機 (127.0.0.1:8080)",
     "production": "正式 (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "使用此伺服器",
     "now": "目前：{url}",
     "badUrl": "請輸入 http 或 https 位址，例如 http://192.168.1.20:8080"
+  },
+  "devOptions": {
+    "open": "開發者選項",
+    "title": "開發者選項",
+    "soundTitle": "聲音",
+    "sound": "以有聲音的方式啟動遊戲",
+    "soundHelp": "預設為靜音：遊戲啟動時沒有聲音。每次開啟 Azura (DEV) 都會恢復靜音。",
+    "close": "關閉"
   },
   "world": {
     "arrival": "抵達觀景台",

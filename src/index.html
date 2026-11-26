@@ -148,6 +148,9 @@
             </button>
             <span class="btn-launch-sub" id="launch-sub"></span>
           </div>
+          <!-- Azura (DEV) only: opens the Development options (setupDevOptions in main.js). The
+               published launcher never shows it. -->
+          <button class="btn dev-options-open" id="dev-options-open" data-i18n="devOptions.open" data-rune="cog" hidden></button>
         </div>
 
         <!-- The game's parts on the left; Alboria (its state and the friends) on the right while
@@ -224,22 +227,6 @@
               <pre class="log-body" id="game-log-body"></pre>
             </div>
 
-            <!-- Azura (DEV) only: which Alboria server it talks to, so test accounts stay off the
-                 real one (setupDevServer in main.js). The published launcher never shows it. -->
-            <div class="panel" id="dev-server-panel" hidden>
-              <h2 class="panel-title" data-i18n="devServer.title"></h2>
-              <p class="help" data-i18n="devServer.help"></p>
-              <div class="path-row">
-                <select id="dev-server-choice">
-                  <option value="local" data-i18n="devServer.local"></option>
-                  <option value="production" data-i18n="devServer.production"></option>
-                  <option value="other" data-i18n="devServer.other"></option>
-                </select>
-                <input class="path" id="dev-server-url" type="text" maxlength="200" spellcheck="false" placeholder="http://192.168.1.20:8080" hidden>
-                <button class="btn btn-primary" id="dev-server-apply" data-i18n="devServer.apply" data-rune="orbit"></button>
-              </div>
-              <p class="help" id="dev-server-now"></p>
-            </div>
           </div>
 
           <div class="play-side">
@@ -689,6 +676,39 @@
       <div class="update-box-actions">
         <button class="btn btn-primary" id="update-confirm-yes" data-i18n="update.confirmYes"></button>
         <button class="btn" id="update-confirm-no" data-pad-back data-i18n="update.later"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVELOPMENT OPTIONS: Azura (DEV) only, from the button beside Play (setupDevOptions in main.js).
+       Every option for testing in one window: whether the game starts with sound (muted at each
+       launcher start) and the Alboria server it talks to. The published launcher never shows it.
+       While it is open, the controller moves only between its controls (data-modal, gamepadNav.js),
+       and Back or Escape closes it. -->
+  <div class="update-dialog dev-options" id="dev-options" data-modal hidden>
+    <div class="update-box" role="dialog" aria-modal="true" aria-labelledby="dev-options-title">
+      <h2 id="dev-options-title" data-i18n="devOptions.title"></h2>
+      <section class="dev-option">
+        <h3 data-i18n="devOptions.soundTitle"></h3>
+        <label class="consent"><input type="checkbox" id="dev-game-sound"> <span data-i18n="devOptions.sound"></span></label>
+        <p class="help" data-i18n="devOptions.soundHelp"></p>
+      </section>
+      <section class="dev-option" id="dev-server-panel">
+        <h3 data-i18n="devServer.title"></h3>
+        <p class="help" data-i18n="devServer.help"></p>
+        <div class="path-row">
+          <select id="dev-server-choice">
+            <option value="local" data-i18n="devServer.local"></option>
+            <option value="production" data-i18n="devServer.production"></option>
+            <option value="other" data-i18n="devServer.other"></option>
+          </select>
+          <input class="path" id="dev-server-url" type="text" maxlength="200" spellcheck="false" placeholder="http://192.168.1.20:8080" hidden>
+          <button class="btn btn-primary" id="dev-server-apply" data-i18n="devServer.apply" data-rune="orbit"></button>
+        </div>
+        <p class="help" id="dev-server-now"></p>
+      </section>
+      <div class="update-box-actions">
+        <button class="btn" id="dev-options-close" data-pad-back data-i18n="devOptions.close"></button>
       </div>
     </div>
   </div>

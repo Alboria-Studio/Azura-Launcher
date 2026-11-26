@@ -594,7 +594,7 @@
     "cameOnline": "{name} elérhető lett"
   },
   "devServer": {
-    "title": "Fejlesztés",
+    "title": "Alboria-szerver",
     "help": "Csak Azura (DEV): az Alboria-szerver, amellyel kommunikál. A Helyi az, amelyet az `npm run local` indít az alboria-serverben, így a tesztfiókok nem kerülnek a valódi adatbázisba. A váltás újra bejelentkezik: minden szervernek saját fiókjai vannak. A játék a következő indításkor ugyanezt a szervert használja.",
     "local": "Helyi (127.0.0.1:8080)",
     "production": "Éles (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "Ezt a szervert használom",
     "now": "Jelenleg: {url}",
     "badUrl": "Írj be egy http vagy https címet, pl. http://192.168.1.20:8080"
+  },
+  "devOptions": {
+    "open": "Fejlesztői beállítások",
+    "title": "Fejlesztői beállítások",
+    "soundTitle": "Hang",
+    "sound": "A játék indítása hanggal",
+    "soundHelp": "Alapból némítva: a játék hang nélkül indul. Az Azura (DEV) minden megnyitásakor újra némított.",
+    "close": "Bezárás"
   },
   "world": {
     "arrival": "Az Érkezés Kilátója",

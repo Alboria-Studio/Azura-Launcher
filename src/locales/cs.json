@@ -594,7 +594,7 @@
     "cameOnline": "{name} je online"
   },
   "devServer": {
-    "title": "Vývoj",
+    "title": "Server Alboria",
     "help": "Jen Azura (DEV): server Alboria, se kterým komunikuje. Místní je ten, který spouští `npm run local` v alboria-server, aby se testovací účty nedostaly do skutečné databáze. Změna znovu přihlásí: každý server má vlastní účty. Hra použije stejný server při příštím spuštění.",
     "local": "Místní (127.0.0.1:8080)",
     "production": "Produkce (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "Použít tento server",
     "now": "Nyní: {url}",
     "badUrl": "Zadejte adresu http nebo https, např. http://192.168.1.20:8080"
+  },
+  "devOptions": {
+    "open": "Vývojářské možnosti",
+    "title": "Vývojářské možnosti",
+    "soundTitle": "Zvuk",
+    "sound": "Spustit hru se zvukem",
+    "soundHelp": "Ve výchozím stavu ztlumeno: hra se spouští bez zvuku. Při každém otevření Azura (DEV) je opět ztlumeno.",
+    "close": "Zavřít"
   },
   "world": {
     "arrival": "Vyhlídka Příchodu",
