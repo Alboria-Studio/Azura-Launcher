@@ -721,6 +721,21 @@ export const onAlboriaEventsState = (listener) => {
 /** Browser simulation only: sends an event as the service would, for designing the panel. */
 export const simulateAlboriaEvent = (event, data) => simulatedEvents.event.forEach((listener) => listener({ event, data }));
 
+// --- The development launcher's options for the game ----------------------------------------------
+
+/** Simulation of the development launcher's game sound, off at each start as the native one. */
+let simulatedGameSound = false;
+
+/** Whether the game starts with sound (Azura (DEV) only; the published launcher always says false). */
+export const devGameSound = async () => (isNativeApp ? tauri.core.invoke("dev_game_sound") : simulatedGameSound);
+
+/** Development launcher only: the game starts with sound (`on`) or muted, until the launcher closes. */
+export const setDevGameSound = async (on) => {
+  if (isNativeApp) return tauri.core.invoke("dev_game_sound_set", { on });
+  simulatedGameSound = on;
+  return on;
+};
+
 // --- The development launcher's Alboria server ----------------------------------------------------
 
 /** Which Alboria server this launcher talks to: `{ dev, choice, url }` (dev false: the published launcher). */

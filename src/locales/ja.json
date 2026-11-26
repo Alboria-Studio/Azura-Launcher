@@ -594,7 +594,7 @@
     "cameOnline": "{name}がオンラインになりました"
   },
   "devServer": {
-    "title": "開発",
+    "title": "Alboria サーバー",
     "help": "Azura (DEV) のみ：通信する Alboria サーバー。ローカルは alboria-server の `npm run local` で起動するもので、テスト用アカウントが本番のデータベースに入りません。変更すると再ログインします（サーバーごとにアカウントは別）。ゲームは次回起動時に同じサーバーを使います。",
     "local": "ローカル (127.0.0.1:8080)",
     "production": "本番 (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "このサーバーを使う",
     "now": "現在: {url}",
     "badUrl": "http または https のアドレスを入力してください（例: http://192.168.1.20:8080）"
+  },
+  "devOptions": {
+    "open": "開発者オプション",
+    "title": "開発者オプション",
+    "soundTitle": "サウンド",
+    "sound": "サウンドありでゲームを起動",
+    "soundHelp": "既定ではミュート：ゲームは無音で起動します。Azura (DEV) を開くたびにミュートに戻ります。",
+    "close": "閉じる"
   },
   "world": {
     "arrival": "到着の展望台",

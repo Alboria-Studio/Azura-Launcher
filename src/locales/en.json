@@ -594,7 +594,7 @@
     "cameOnline": "{name} is online"
   },
   "devServer": {
-    "title": "Development",
+    "title": "Alboria server",
     "help": "Azura (DEV) only: the Alboria server it talks to. Local is the one `npm run local` starts in alboria-server, so test accounts stay off the real database. Changing it signs in again: each server has its own accounts. The game uses the same server the next time it starts.",
     "local": "Local (127.0.0.1:8080)",
     "production": "Production (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "Use this server",
     "now": "Now: {url}",
     "badUrl": "Type an http or https address, like http://192.168.1.20:8080"
+  },
+  "devOptions": {
+    "open": "Development options",
+    "title": "Development options",
+    "soundTitle": "Sound",
+    "sound": "Start the game with sound",
+    "soundHelp": "Muted by default: the game starts silent. It goes back to muted each time Azura (DEV) opens.",
+    "close": "Close"
   },
   "world": {
     "arrival": "The Arrival Lookout",

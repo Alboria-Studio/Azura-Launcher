@@ -460,6 +460,17 @@ code, kbd {
 .update-box-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 4px; }
 .update-box-actions .btn { white-space: normal; text-align: center; }
 
+/* Azura (DEV)'s Development options: the update question's box, one section per option, and the
+   button that opens it beside Play. The box scrolls when the options outgrow a small window. */
+.dev-options .update-box { overflow-y: auto; }
+.dev-options h2 { margin: 0; font: 600 26px/1.05 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+.dev-option { padding-top: 12px; border-top: 1px solid var(--steel-line); }
+.dev-option h3 { margin: 0 0 8px; font: 600 14px var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--imulsion); }
+.dev-option .consent { color: var(--text-soft); }
+.dev-option .help { margin: 6px 0 8px; font-size: 14px; }
+.dev-options-open { align-self: center; }
+.dev-options-open[hidden] { display: none; }
+
 .rail-language { margin-bottom: 8px; }
 .rail-language select { padding: 6px 30px 6px 10px; font-size: 13px; }
 .version { font-family: var(--font-ui); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; color: var(--text-faint); }

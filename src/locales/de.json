@@ -594,7 +594,7 @@
     "cameOnline": "{name} ist jetzt online"
   },
   "devServer": {
-    "title": "Entwicklung",
+    "title": "Alboria-Server",
     "help": "Nur Azura (DEV): der Alboria-Server, mit dem es spricht. Lokal ist der, den `npm run local` in alboria-server startet, damit Testkonten nicht in die echte Datenbank gelangen. Ein Wechsel meldet neu an: Jeder Server hat eigene Konten. Das Spiel nutzt beim nächsten Start denselben Server.",
     "local": "Lokal (127.0.0.1:8080)",
     "production": "Produktion (api.alboria.org)",
@@ -602,6 +602,14 @@
     "apply": "Diesen Server verwenden",
     "now": "Aktuell: {url}",
     "badUrl": "Gib eine http- oder https-Adresse ein, z. B. http://192.168.1.20:8080"
+  },
+  "devOptions": {
+    "open": "Entwickleroptionen",
+    "title": "Entwickleroptionen",
+    "soundTitle": "Ton",
+    "sound": "Spiel mit Ton starten",
+    "soundHelp": "Standardmäßig stumm: Das Spiel startet ohne Ton. Bei jedem Öffnen von Azura (DEV) ist es wieder stumm.",
+    "close": "Schließen"
   },
   "world": {
     "arrival": "Der Ankunftsblick",
